@@ -136,6 +136,10 @@
     "description" : "project connectivity sweeps out of fixed-node regions each iteration (obstacle-aware field)",
     "default" : 0
     },
+"conn_shrink_scale" : {
+    "description" : "shrink the connectivity field to this sigma (fraction of die span per axis) about its centroid, keeping relative order; skips snap/spread (experiment 6)",
+    "default" : 0
+    },
 "gamma_warmup_iters" : {
     "description" : "treat overflow as decaying from 1.0 over this many iterations when updating gamma (smooth-WL warm-up for scattered inits)",
     "default" : 0

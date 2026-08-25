@@ -254,6 +254,29 @@ def connectivity_grid_init(placedb, params):
         int(params.ignore_net_degree), project=project)
     logging.info("connectivity grid init: %d sweeps done" % (num_sweeps))
 
+    shrink = float(getattr(params, "conn_shrink_scale", 0))
+    if shrink > 0:
+        # Experiment 6: imitate random_center_init's extent (sigma = shrink *
+        # die span per axis) while keeping the field's relative order intact —
+        # rescale each axis about the area-weighted movable centroid and skip
+        # snapping/spreading (cells may stack, exactly like center init).
+        area = (placedb.node_size_x[:num_movable] *
+                placedb.node_size_y[:num_movable]).astype(np.float64)
+        for centers, lo, hi in ((centers_x, placedb.xl, placedb.xh),
+                                (centers_y, placedb.yl, placedb.yh)):
+            c = float((centers[:num_movable] * area).sum() / area.sum())
+            std = float(np.sqrt((((centers[:num_movable] - c) ** 2) * area).sum()
+                                / area.sum()))
+            if std > 0:
+                centers[:num_movable] = c + (centers[:num_movable] - c) * (
+                    shrink * (hi - lo) / std)
+        logging.info("connectivity grid init: shrink to sigma=%g of die" % shrink)
+        x = centers_x[:num_movable] - placedb.node_size_x[:num_movable] / 2
+        y = centers_y[:num_movable] - placedb.node_size_y[:num_movable] / 2
+        np.clip(x, placedb.xl, placedb.xh - placedb.node_size_x[:num_movable], out=x)
+        np.clip(y, placedb.yl, placedb.yh - placedb.node_size_y[:num_movable], out=y)
+        return x.astype(placedb.dtype), y.astype(placedb.dtype)
+
     if getattr(params, "conn_capacity_spread_flag", 0):
         sx, sy = _capacity_spread(placedb, centers_x, centers_y,
                                   int(getattr(params, "conn_spread_leaf_size", 16)),

@@ -1,0 +1,13 @@
+quiet, proceeding
+acquired gpu0.lock
+s001/adaptec1 exit=0
+s010/adaptec1 exit=0
+s001/adaptec2 exit=0
+s010/adaptec2 exit=0
+s001/adaptec4 exit=0
+s010/adaptec4 exit=0
+s001/bigblue3 exit=0
+s010/bigblue3 exit=0
+s001/bigblue4 exit=0
+s010/bigblue4 exit=0
+ALL_DONE
