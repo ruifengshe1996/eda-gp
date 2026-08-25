@@ -182,3 +182,45 @@ python ../scripts/conn_seed_centroid.py adaptec4 adaptec3 adaptec1 bigblue3 2>/d
 python ../scripts/movable_centroid.py adaptec4 results/adaptec4/adaptec4.gp.pl \
   conn_results/adaptec4/adaptec4.gp.pl 2>/dev/null
 ```
+
+## E5：迁移的时序——熔化段下沉、密度爬坡段上迁、场轨迹钉死（会话 e0）
+
+用迭代快照的蓝色像素质心还原三条轨迹的 dy(t)（% 帧高，正=上；
+`/scratch/frame_centroid.py`，center/conn-grid 用旧机提交帧、obsfield 用
+本机密集帧，三条形状互相一致；iter0 帧有绘图边界伪影，弃用）：
+
+| 阶段 | center | conn-grid | obsfield（密集帧） |
+|---|---|---|---|
+| WL 主导段（it≈80-160，ov≈0.75-0.80） | **下沉**至 −3.7% | **暴跌**至 −28.8%（it94） | 暴跌至 −26.8%（it94） |
+| 回弹（it≈235-282，ov≈0.74） | −1.5 → −0.5% | 回到 +0.1% | 回到 +0.2% |
+| 密度爬坡段（it≈280-660，ov 0.74→0.13，λ 1e-6→1e-2） | **持续上迁 0 → +5.1%** | **钉死**（−0.6% 不再动） | **钉死**（−1.3%） |
+
+三个修正性的结论：
+
+1. **melt 段并不完成定位**——center 的质量在纯 WL 阶段同样被下偏锚质量
+   拉向下方（−3.7%）。E4"相干整体定位发生在质量为一点时"的表述不准确：
+   **+6% 的上迁发生在密度爬坡段**（overflow 0.75→0.14 的全程），是密度
+   溢出驱动的整体迁移。
+2. **场种子的真实创伤在 WL 塌缩瞬态**：it≈94 时质量已暴跌到 −27~−29%
+   （朝下方锚簇跌落），it≈282 才回到中心。M2 机制（λ₀ 归一化保证初始
+   塌缩）第一次被空间可视化——序是在这次跌落途中重冻结的。
+3. **钉死与位置无关**：it≈282 时 center 与场变体位置几乎相同（≈0%）、
+   overflow 相同（≈0.74）、λ 同量级，但 center 随后上迁、场变体原地不动。
+   剩余的可疑差异是**质量的空间集中度**：center 此时仍是紧凑团
+   （overflow 集中在一处，密度溢出相干、有方向），场变体已铺开
+   （overflow 弥散，只有局部溢出、无净迁移）。
+
+### 由此提出实验 6 候选（**conn-shrink**，会话 e0 认领）
+
+若结论 3 成立，则场初始化缺的不是序、不是调度、不是位置，而是
+**紧凑度**——保留场解的相对序、把它绕质心整体收缩到 center-init 量级的
+紧凑团（`conn_shrink_factor`，一行几何变换 + 旋钮，改
+ConnectivityGridInit.py），再走标准流程：预测它能恢复相干溢出迁移，在
+adaptec4 上接近甚至超越 center（序预解 + 标准同伦全保留）。这是对
+"紧凑度 ⇒ 相干迁移"机制最直接的检验；若 shrink 后仍钉死，则钉死原因
+只剩"序的内容本身"（在跌落中/场中形成的序抵抗迁移）。
+代码改动待实验 4B、5 批次结束后按锁协议进行。
+
+复现：`python /public_data/sheruifeng/research/eda_gp/scratch/frame_centroid.py \
+  install/obsfield_results/adaptec4/plot experiments/obstacle_field/logs/obsfield/adaptec4.log`
+（脚本待实验 6 一并入 scripts/）
