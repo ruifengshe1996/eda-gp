@@ -125,35 +125,60 @@ E2 的三个签名在障碍感知变体上**全部复现**：
 复现：`cd install && python ../scripts/pernet_hpwl_diff.py adaptec4 \
   results/adaptec4/adaptec4.gp.pl obsfield_results/adaptec4/adaptec4.gp.pl`
 
-## E4：固定锚质量几何——质心下移的机制候选（会话 e0 补充）
+## E4（修订版）：质心几何——从"锚点拖拽"到"质量迁移失败"（会话 e0）
 
-E2/E2b 发现所有场变体的可动质心被系统性拉向芯片下部（conn-grid −1509、
-obsfield −1706，约芯片高的 6~7%）。测量固定锚的质量分布
-（`scripts/fixed_mass_centroid.py`，CPU-only）：
+*初版 E4 把 E2/E2b 观察到的"场变体质心比 center 低 6~7% 芯片高"表述为
+"场变体被下偏的锚质量拖离中心"。会话 50cd98 的绝对坐标复核与本节的
+对照/种子测量共同推翻了这一表述；修订如下，原版本见 git 历史 b7bb397。*
 
-| 设计 | 固定引脚质心 y（相对芯片中心，%芯片高） | 固定面积质心 y | 场变体劣势 |
-|---|---|---|---|
-| adaptec4 | **−2.6%（偏下）**，29206 引脚 | −2.4% | +3.5%，质心下移 |
-| adaptec3 | +3.8%（偏上），24755 引脚 | +0.1% | ±0%（无劣势） |
-| adaptec1 | −2.1%（偏下），14673 引脚 | +3.7%（偏上） | ±0%（无劣势） |
+完整的位移链（y 方向、相对芯片中心、%芯片高；`fixed_mass_centroid.py`、
+`conn_seed_centroid.py`、`movable_centroid.py`）：
 
-机制假设（**锚点拖拽**）：Jacobi/二次星型模型对锚点的吸引随距离**线性**
-增长——偏下的固定引脚质量会把整个场嵌入拖向下方，且偏移被远距项放大
-（观测 −6~7% >> 锚偏移 −2.6%）；而 WA-WL 的梯度被 gamma **饱和**截断，
-melt 阶段不被远锚拖拽。这把"二次目标本身 vs Jacobi 欠收敛"的 S2 判别题
-细化为可观测预测：
+| 设计 | 固定引脚质心 | 场种子质心（塌缩半径*） | conn-grid 最终 | melt(center) 最终 | 劣势 |
+|---|---|---|---|---|---|
+| adaptec4 | −2.6% | **−0.0%**（806 / 23k） | −0.3%（obsfield −1.1%） | **+6.2%** | +3.5% |
+| adaptec3 | +3.8% | −1.5%（2135 / 23k） | **−4.1%** | **−5.8%** | ±0% |
+| adaptec1 | −2.1% | −0.0%（385 / 11k） | +0.6% | −0.3% | ±0% |
+| bigblue3 | 未测 | +0.2%（771 / 28k） | 未测 | 未测 | +1.15% |
 
-- 若 GiFt（二次族全局解）在 adaptec4 上同样质心下移且 +3.5% ⇒ 锚点拖拽
-  （二次目标）成立；
-- 反例警示：adaptec1 引脚质心同样偏下却无劣势——高利用率（0.573）本身
-  约束嵌入自由度，且其固定面积质心偏上；机制若成立应主要在低利用率 +
-  引脚/面积质心同向偏移的设计上表达（目前仅 adaptec4 同时满足）。
-- 廉价旁证（无 GPU）：量 adaptec3/adaptec1 的 conn-grid 最终布局质心——
-  预测不下移（adaptec3 或略上移）。
+*塌缩半径 = 可动单元到质心平均距离 / 芯片高。
 
-**对实验 3 的注册预测**（在结果出来前写下）：warm/warmmono 从场位置出发
-重新熔化，WL 收缩只会向既有邻居质量靠拢，不改变全局嵌入族——预计
-adaptec4 仍停在 +3~3.5%，热身的收益应出现在 adaptec2/bigblue3 这类
-调度失配主导的设计上。若 adaptec4 被 warm 修复，锚点拖拽假设即被削弱。
+三个修订后的事实：
 
-复现：`cd install && python ../scripts/fixed_mass_centroid.py adaptec4 adaptec3 adaptec1 2>/dev/null`
+1. **场种子在所有设计上都塌缩于芯片中心附近**（偏移 ≤1.5%，半径仅为
+   芯片尺度的 2~9%）。conn-grid 并不是"被锚拖到某处的分散嵌入"，它本质
+   上是**带连通序、非退化 λ₀/γ₀ 状态的中心初始化**。初版"线性拖拽 vs
+   饱和"机制不能解释种子位置（种子就在中心）。
+2. **melt 的最终位置是设计相关的"逃逸位置"**：adaptec4 上 center 把质量
+   体带到 +6.2%（面积加权 +6.5%），adaptec3 上带到 −5.8%，adaptec1 上
+   留在中心。方向与"远离固定锚质量、进入自由区"一致（adaptec4 固定面积
+   质心 −2.4% ⇒ 自由区质心约 +2.3%，melt 走得比它还远）。
+3. **劣势与"场变体能否复现 melt 的质量迁移"精确对应**：adaptec3 需要
+   −4% 的迁移，conn-grid 做到了（−1.5%→−4.1%），无劣势；adaptec1 无需
+   迁移，无劣势；adaptec4 需要 +6%，conn-grid 只挪了 −0.9%，+3.5%。
+   center 的优势在于：质量还是一个点时整体定位是免费的（相干平移 +
+   逐步随密度溢出），而秩序已定、λ 已挂载的场状态做不了长程整体输运
+   （候选阻力：下方锚质量在 WL 梯度中的持续下拉、中部宏障碍 M5、
+   λ 挂载后的密度钉扎——未分离，标记为待判别）。
+
+S2（GiFt）判别措辞相应修正（50cd98 提议，采纳）：不看"是否下移"，看
+**GiFt 最终质心落在芯片中心附近（场族签名）还是像 melt 一样到 +6% 级
+（melt 族）**；GiFt 种子按二次族推断也应在中心，判别力全部在"GP 过程
+能否完成迁移"上。50cd98 已在实验 5 批次挂上质心自动记录。
+
+**对实验 3 的注册预测（更新）**：初版预测的前提（"warm 从场位置出发"
+暗示分散态）被事实 1 削弱——conn-grid 种子本就是中心塌缩团，
+warm + conn-grid 在几何上非常接近 center init，差异只剩"序已解 vs
+对称态"与调度状态。因此修订预测为条件对：若 warm 修复 adaptec4 ⇒
+劣势主因是调度失配（λ₀/γ₀ 挂载过早，秩序无罪）；若 warm 不修复 ⇒
+"从对称点熔化"本身（相干整体定位）不可替代，秩序预解反而有害。
+两个结果都有明确含义。（写于实验 3 批次 adaptec4 结果查看之前。）
+
+复现：
+```bash
+cd install
+python ../scripts/fixed_mass_centroid.py adaptec4 adaptec3 adaptec1 2>/dev/null
+python ../scripts/conn_seed_centroid.py adaptec4 adaptec3 adaptec1 bigblue3 2>/dev/null
+python ../scripts/movable_centroid.py adaptec4 results/adaptec4/adaptec4.gp.pl \
+  conn_results/adaptec4/adaptec4.gp.pl 2>/dev/null
+```
