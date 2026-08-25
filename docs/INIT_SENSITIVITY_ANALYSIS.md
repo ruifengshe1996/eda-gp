@@ -97,6 +97,11 @@ side of blockages. adaptec4 degrades under every non-center init tried.
   gamma forced large for N iterations), or initialize lambda/gamma against a
   *reference* state rather than the raw initial state; make gamma follow a
   monotone envelope (e.g. min-overflow-so-far) to kill the swing.
+  *Outcome (experiments/schedule_warmup): negated — no warm-up variant beats
+  plain conn-grid. The monotone gamma envelope destroys bigblue3 (+4.94%:
+  the swing is a necessary divergence-recovery mechanism), warm-up re-freezes
+  adaptec2's side commitments (+2.60%), adaptec4 unmoved. The melt's value
+  is its dynamics, not its schedule.*
 - **D2 (M1/M5) Obstacle-aware connectivity field.** Project each Jacobi sweep
   onto the feasible region (or solve the Laplace system with macro regions
   excluded), so cells choose the correct side of blockages — targets the
@@ -115,6 +120,13 @@ side of blockages. adaptec4 degrades under every non-center init tried.
   overflow* (uniform's −38% iterations). The two experiments show these
   benefits are separable; this direction tries to compose them. Most promising
   next experiment.
+  *Outcome (experiments/capacity_snap, experiments/field_gate): composed
+  successfully on 6/8 designs but structurally harmful on bigblue3/4
+  (+20.9%/+4.1%, seed-stable to 0.1–0.4pp), and no init-time statistic
+  separates the harmed designs — span, displacement, HPWL inflation and
+  centroid position all fail (gating falsified). Only an empirical race
+  decided at overflow <= 0.4 can arbitrate (+40–80% GP cost). Best single
+  choice remains obsfield (D2).*
 - **D4 (M5) Mid-flight re-melting.** On plateau detection (overflow stalled,
   HPWL rising), locally raise gamma / inject targeted noise on high-WL-gradient
   cells (the existing entropy_injection machinery, but order-aware), or run one
@@ -123,6 +135,11 @@ side of blockages. adaptec4 degrades under every non-center init tried.
 - **D5 Diagnostics.** Multi-seed variance per init strategy; correlate
   per-design loss with macro area fraction / blockage geometry to confirm the
   wrong-side-of-barrier hypothesis on adaptec2/4.
+  *Outcome: seed variance measured (0.09–0.17% for center/conn-grid on
+  adaptec4, 0.1–0.4pp for spread variants) — every claimed delta >= 0.5pp in
+  this repo is significant. The geometry-correlation hunt came up empty
+  (experiments/field_gate probe battery); the per-design diagnosis moved to
+  docs/ADAPTEC4_DIAGNOSIS.md.*
 
 ## One-line summary
 
