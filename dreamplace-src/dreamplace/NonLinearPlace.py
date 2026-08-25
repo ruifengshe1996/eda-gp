@@ -424,7 +424,8 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                         assert 0, "unsupported optimizer %s" % (optimizer_name)
 
                     # plot placement
-                    if params.plot_flag and (iteration % 100 == 0 or iteration == 999):
+                    plot_interval = getattr(params, "plot_iteration_interval", 100)
+                    if params.plot_flag and (iteration % plot_interval == 0 or iteration == 999):
                         cur_pos = self.pos[0].data.clone().cpu().numpy()
                         self.plot(params, placedb, iteration, cur_pos)
 

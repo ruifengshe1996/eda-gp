@@ -13,6 +13,8 @@ Goal: improve global placement algorithms on top of DREAMPlace.
 - `deps/cuda-11.8/` — user-local CUDA 11.8 toolkit
 - `docs/DREAMPLACE_NOTES.md` — code architecture notes
 - `docs/ISPD2005_BASELINE.md` — reproduced baseline results & how-to-run
+- `viz/` — 10 iteration snapshots per ISPD2005 design (see `viz/README.md`)
+- `scripts/` — helper scripts
 
 ## Quick start
 

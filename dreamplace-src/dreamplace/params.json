@@ -105,8 +105,12 @@
     "default" : "-nolegal -nodetail"
     },
 "plot_flag" : {
-    "description" : "whether plot solution or not", 
+    "description" : "whether plot solution or not",
     "default" : 0
+    },
+"plot_iteration_interval" : {
+    "description" : "plot every N global placement iterations when plot_flag is set",
+    "default" : 100
     },
 "RePlAce_ref_hpwl" : {
     "description" : "reference HPWL used in RePlAce for updating density weight", 
