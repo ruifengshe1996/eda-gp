@@ -124,3 +124,36 @@ E2 的三个签名在障碍感知变体上**全部复现**：
 
 复现：`cd install && python ../scripts/pernet_hpwl_diff.py adaptec4 \
   results/adaptec4/adaptec4.gp.pl obsfield_results/adaptec4/adaptec4.gp.pl`
+
+## E4：固定锚质量几何——质心下移的机制候选（会话 e0 补充）
+
+E2/E2b 发现所有场变体的可动质心被系统性拉向芯片下部（conn-grid −1509、
+obsfield −1706，约芯片高的 6~7%）。测量固定锚的质量分布
+（`scripts/fixed_mass_centroid.py`，CPU-only）：
+
+| 设计 | 固定引脚质心 y（相对芯片中心，%芯片高） | 固定面积质心 y | 场变体劣势 |
+|---|---|---|---|
+| adaptec4 | **−2.6%（偏下）**，29206 引脚 | −2.4% | +3.5%，质心下移 |
+| adaptec3 | +3.8%（偏上），24755 引脚 | +0.1% | ±0%（无劣势） |
+| adaptec1 | −2.1%（偏下），14673 引脚 | +3.7%（偏上） | ±0%（无劣势） |
+
+机制假设（**锚点拖拽**）：Jacobi/二次星型模型对锚点的吸引随距离**线性**
+增长——偏下的固定引脚质量会把整个场嵌入拖向下方，且偏移被远距项放大
+（观测 −6~7% >> 锚偏移 −2.6%）；而 WA-WL 的梯度被 gamma **饱和**截断，
+melt 阶段不被远锚拖拽。这把"二次目标本身 vs Jacobi 欠收敛"的 S2 判别题
+细化为可观测预测：
+
+- 若 GiFt（二次族全局解）在 adaptec4 上同样质心下移且 +3.5% ⇒ 锚点拖拽
+  （二次目标）成立；
+- 反例警示：adaptec1 引脚质心同样偏下却无劣势——高利用率（0.573）本身
+  约束嵌入自由度，且其固定面积质心偏上；机制若成立应主要在低利用率 +
+  引脚/面积质心同向偏移的设计上表达（目前仅 adaptec4 同时满足）。
+- 廉价旁证（无 GPU）：量 adaptec3/adaptec1 的 conn-grid 最终布局质心——
+  预测不下移（adaptec3 或略上移）。
+
+**对实验 3 的注册预测**（在结果出来前写下）：warm/warmmono 从场位置出发
+重新熔化，WL 收缩只会向既有邻居质量靠拢，不改变全局嵌入族——预计
+adaptec4 仍停在 +3~3.5%，热身的收益应出现在 adaptec2/bigblue3 这类
+调度失配主导的设计上。若 adaptec4 被 warm 修复，锚点拖拽假设即被削弱。
+
+复现：`cd install && python ../scripts/fixed_mass_centroid.py adaptec4 adaptec3 adaptec1 2>/dev/null`
