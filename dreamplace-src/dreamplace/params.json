@@ -108,6 +108,10 @@
     "description" : "whether plot solution or not",
     "default" : 0
     },
+"random_uniform_init_flag" : {
+    "description" : "initialize movable cells uniformly over the placement region; takes precedence over random_center_init_flag",
+    "default" : 0
+    },
 "plot_iteration_interval" : {
     "description" : "plot every N global placement iterations when plot_flag is set",
     "default" : 100

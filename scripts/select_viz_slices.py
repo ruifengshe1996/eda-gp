@@ -15,9 +15,17 @@ import sys
 
 from PIL import Image
 
+import argparse
+
 GP_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SRC = os.path.join(GP_ROOT, "install", "viz_results")
-DST = os.path.join(GP_ROOT, "viz")
+_ap = argparse.ArgumentParser()
+_ap.add_argument("--src", default=os.path.join(GP_ROOT, "install", "viz_results"),
+                 help="dir with <design>/plot/iterNNNN.png frames")
+_ap.add_argument("--dst", default=os.path.join(GP_ROOT, "viz"),
+                 help="output dir for <design>/sliceKK_iterNNNN.png")
+_args = _ap.parse_args()
+SRC = _args.src
+DST = _args.dst
 NUM_SLICES = 10
 
 

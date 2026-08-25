@@ -269,7 +269,16 @@ class BasicPlace(nn.Module):
         self.init_pos = np.zeros(placedb.num_nodes * 2, dtype=placedb.dtype)
         # x position
         self.init_pos[0:placedb.num_physical_nodes] = placedb.node_x
-        if params.global_place_flag and params.random_center_init_flag:  # move to center of layout
+        if params.global_place_flag and getattr(params, "random_uniform_init_flag", 0):
+            # spread movable cells uniformly over the whole placement region;
+            # takes precedence over random_center_init_flag
+            logging.info(
+                "spread cells uniformly over the layout")
+            self.init_pos[0:placedb.num_movable_nodes] = np.random.uniform(
+                low=placedb.xl,
+                high=placedb.xh - placedb.node_size_x[0:placedb.num_movable_nodes],
+                size=placedb.num_movable_nodes)
+        elif params.global_place_flag and params.random_center_init_flag:  # move to center of layout
             logging.info(
                 "move cells to the center of layout with random noise")
             self.init_pos[0:placedb.num_movable_nodes] = np.random.normal(
@@ -280,7 +289,13 @@ class BasicPlace(nn.Module):
         # y position
         self.init_pos[placedb.num_nodes:placedb.num_nodes +
                       placedb.num_physical_nodes] = placedb.node_y
-        if params.global_place_flag and params.random_center_init_flag:  # move to center of layout
+        if params.global_place_flag and getattr(params, "random_uniform_init_flag", 0):
+            self.init_pos[placedb.num_nodes:placedb.num_nodes +
+                          placedb.num_movable_nodes] = np.random.uniform(
+                              low=placedb.yl,
+                              high=placedb.yh - placedb.node_size_y[0:placedb.num_movable_nodes],
+                              size=placedb.num_movable_nodes)
+        elif params.global_place_flag and params.random_center_init_flag:  # move to center of layout
             self.init_pos[placedb.num_nodes:placedb.num_nodes +
                           placedb.num_movable_nodes] = np.random.normal(
                               loc=(placedb.yl * 1.0 + placedb.yh * 1.0) / 2,
