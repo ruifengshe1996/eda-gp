@@ -1,0 +1,9 @@
+gift/adaptec4 exit=0
+gift/adaptec2 exit=0
+gift/bigblue3 exit=0
+gift/adaptec1 exit=0
+gift/adaptec3 exit=0
+gift/bigblue1 exit=0
+gift/bigblue2 exit=0
+gift/bigblue4 exit=0
+ALL_DONE

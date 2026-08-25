@@ -1,0 +1,16 @@
+adaptec4 results/adaptec4/adaptec4.gp.pl: centroid (11894,13170) [dy +6.5% of h], area-weighted (11864,13048) [dy +5.9%], mean dist 5413
+adaptec4 gift_results/adaptec4/adaptec4.gp.pl: centroid (11940,12454) [dy +3.4% of h], area-weighted (11902,12363) [dy +3.0%], mean dist 5232
+adaptec2 results/adaptec2/adaptec2.gp.pl: centroid (9552,6837) [dy -1.3% of h], area-weighted (9634,6698) [dy -2.3%], mean dist 3816
+adaptec2 gift_results/adaptec2/adaptec2.gp.pl: centroid (9225,6752) [dy -1.9% of h], area-weighted (9314,6621) [dy -2.8%], mean dist 3897
+bigblue3 results/bigblue3/bigblue3.gp.pl: centroid (12213,15212) [dy +4.7% of h], area-weighted (12174,14992) [dy +3.9%], mean dist 7669
+bigblue3 gift_results/bigblue3/bigblue3.gp.pl: centroid (13268,14677) [dy +2.8% of h], area-weighted (13153,14493) [dy +2.1%], mean dist 7603
+adaptec1 results/adaptec1/adaptec1.gp.pl: centroid (5788,5304) [dy -0.3% of h], area-weighted (5896,5208) [dy -1.2%], mean dist 3080
+adaptec1 gift_results/adaptec1/adaptec1.gp.pl: centroid (5693,5530) [dy +1.8% of h], area-weighted (5797,5457) [dy +1.1%], mean dist 3016
+adaptec3 results/adaptec3/adaptec3.gp.pl: centroid (11436,10316) [dy -5.8% of h], area-weighted (11750,10397) [dy -5.4%], mean dist 6867
+adaptec3 gift_results/adaptec3/adaptec3.gp.pl: centroid (11721,10566) [dy -4.7% of h], area-weighted (12000,10649) [dy -4.4%], mean dist 7002
+bigblue1 results/bigblue1/bigblue1.gp.pl: centroid (4798,5835) [dy +4.6% of h], area-weighted (4822,5840) [dy +4.7%], mean dist 2491
+bigblue1 gift_results/bigblue1/bigblue1.gp.pl: centroid (5156,5981) [dy +6.0% of h], area-weighted (5183,5984) [dy +6.0%], mean dist 2493
+bigblue2 results/bigblue2/bigblue2.gp.pl: centroid (9287,9064) [dy -1.8% of h], area-weighted (9368,9111) [dy -1.5%], mean dist 5982
+bigblue2 gift_results/bigblue2/bigblue2.gp.pl: centroid (9447,9717) [dy +1.7% of h], area-weighted (9532,9774) [dy +2.0%], mean dist 5180
+bigblue4 results/bigblue4/bigblue4.gp.pl: centroid (16573,14093) [dy -6.4% of h], area-weighted (16866,14080) [dy -6.4%], mean dist 10504
+bigblue4 gift_results/bigblue4/bigblue4.gp.pl: centroid (17178,14549) [dy -5.0% of h], area-weighted (17286,14480) [dy -5.2%], mean dist 9205

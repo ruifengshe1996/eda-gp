@@ -1,0 +1,8 @@
+2026-08-25 19:28:13 waiting for schedule_warmup ALL_DONE
+2026-08-25 20:26:14 schedule_warmup done (or 6h timeout)
+2026-08-25 20:35:20 waiting for schedule_warmup ALL_DONE
+2026-08-25 20:35:20 schedule_warmup done (or 6h timeout)
+2026-08-25 20:37:20 field_gate status found: /public_data/sheruifeng/research/eda_gp/eda-gp/experiments/field_gate/logs/driver_status.txt; waiting for ALL_DONE
+2026-08-25 21:39:21 field_gate done (or 4h timeout)
+2026-08-25 21:39:21 launching gift_init run_all.sh
+2026-08-25 22:16:29 gift_init driver exited
