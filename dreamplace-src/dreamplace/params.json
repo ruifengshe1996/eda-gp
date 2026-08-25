@@ -108,6 +108,18 @@
     "description" : "whether plot solution or not",
     "default" : 0
     },
+"connectivity_grid_init_flag" : {
+    "description" : "connectivity-aware seed placement snapped to feasible bin-lattice anchors (grid vertices and edge midpoints, fixed-node areas masked); takes precedence over other init flags",
+    "default" : 0
+    },
+"conn_init_sweeps" : {
+    "description" : "number of damped Jacobi connectivity sweeps for connectivity_grid_init",
+    "default" : 32
+    },
+"conn_init_damping" : {
+    "description" : "damping factor of the connectivity sweeps",
+    "default" : 0.7
+    },
 "random_uniform_init_flag" : {
     "description" : "initialize movable cells uniformly over the placement region; takes precedence over random_center_init_flag",
     "default" : 0

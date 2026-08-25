@@ -1,0 +1,9 @@
+adaptec1 exit=0
+adaptec2 exit=0
+adaptec3 exit=0
+adaptec4 exit=0
+bigblue1 exit=0
+bigblue2 exit=0
+bigblue3 exit=0
+bigblue4 exit=0
+ALL_DONE

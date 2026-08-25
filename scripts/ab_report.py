@@ -1,12 +1,10 @@
 #!/usr/bin/env python3
-"""Parse DREAMPlace logs for an A/B experiment and emit metrics + convergence curves.
+"""Parse DREAMPlace logs for init-strategy experiments and emit metrics + curves.
 
-A = baseline (random_center_init), logs in docs/logs/<design>_run.log
-B = experiment variant, logs given by --b-logs directory (<design>.log)
+Baseline A = random_center_init, logs in --a-logs (<design>_run.log).
+Any number of variants via repeated --variant name=logdir (<design>.log each).
 
-Outputs into the experiment directory:
-  metrics.csv, metrics.md (summary table),
-  curves_hpwl.png, curves_overflow.png (per-design A/B overlays)
+Outputs into --out: metrics.csv, metrics.md, curves_hpwl.png, curves_overflow.png.
 """
 import argparse
 import csv
@@ -20,11 +18,9 @@ import matplotlib.pyplot as plt
 DESIGNS = ["adaptec1", "adaptec2", "adaptec3", "adaptec4",
            "bigblue1", "bigblue2", "bigblue3", "bigblue4"]
 
-# full GP iteration line (has Obj/DensityWeight/Overflow)
 ITER_RE = re.compile(
     r"iteration\s+(\d+), \([^)]*\), Obj (\S+), DensityWeight \S+, "
     r"wHPWL (\S+), Overflow (\S+),")
-# final summary line printed after legalization/detailed placement
 FINAL_RE = re.compile(r"iteration\s+(\d+), wHPWL (\S+), time")
 NLP_TIME_RE = re.compile(r"non-linear placement takes (\S+) seconds")
 TOTAL_TIME_RE = re.compile(r"placement takes (\S+) seconds")
@@ -32,9 +28,9 @@ LEGAL_RE = re.compile(r"legal flag = 1")
 # plotting overhead (only present in plot_flag=1 runs) — subtracted from times
 PLOT_TIME_RE = re.compile(r"\[INFO.*plotting to \S+ takes (\S+) seconds")
 
-# reference palette, categorical slots 1 and 2 (validated, light mode)
-COLOR_A = "#2a78d6"
-COLOR_B = "#eb6834"
+# reference palette, categorical slots in fixed order (validated, light mode);
+# slot 1 (blue) is always the baseline, variants take the following slots
+PALETTE = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100"]
 INK = "#0b0b0b"
 INK2 = "#52514e"
 
@@ -86,12 +82,12 @@ def style_axis(ax):
     ax.tick_params(colors=INK2, labelsize=8)
 
 
-def plot_grid(data, key, ylabel, out_path, logy=False):
+def plot_grid(data, variants, key, ylabel, out_path, logy=False):
     fig, axes = plt.subplots(2, 4, figsize=(14, 6.5), facecolor="white")
     for ax, design in zip(axes.flat, DESIGNS):
-        a, b = data[design]["A"], data[design]["B"]
-        ax.plot(a["iters"], a[key], color=COLOR_A, linewidth=2, label="center init (baseline)")
-        ax.plot(b["iters"], b[key], color=COLOR_B, linewidth=2, label="uniform init")
+        for (name, _), color in zip(variants, PALETTE):
+            r = data[design][name]
+            ax.plot(r["iters"], r[key], color=color, linewidth=2, label=name)
         if logy:
             ax.set_yscale("log")
         ax.set_title(design, fontsize=10, color=INK)
@@ -101,8 +97,8 @@ def plot_grid(data, key, ylabel, out_path, logy=False):
     for ax in axes[:, 0]:
         ax.set_ylabel(ylabel, fontsize=9, color=INK2)
     handles, labels = axes.flat[0].get_legend_handles_labels()
-    fig.legend(handles, labels, loc="upper center", ncol=2, frameon=False,
-               fontsize=10, bbox_to_anchor=(0.5, 1.0))
+    fig.legend(handles, labels, loc="upper center", ncol=len(variants),
+               frameon=False, fontsize=10, bbox_to_anchor=(0.5, 1.0))
     fig.tight_layout(rect=(0, 0, 1, 0.95))
     fig.savefig(out_path, dpi=150)
     plt.close(fig)
@@ -112,16 +108,22 @@ def plot_grid(data, key, ylabel, out_path, logy=False):
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("--a-logs", default="docs/logs", help="baseline logs dir (<d>_run.log)")
-    p.add_argument("--b-logs", required=True, help="variant logs dir (<d>.log)")
-    p.add_argument("--out", required=True, help="experiment output dir")
+    p.add_argument("--a-name", default="center (baseline)")
+    p.add_argument("--variant", action="append", required=True,
+                   metavar="NAME=LOGDIR", help="variant logs dir (<d>.log)")
+    p.add_argument("--out", required=True, help="output dir")
     args = p.parse_args()
+
+    variants = [(args.a_name, None)]
+    for v in args.variant:
+        name, logdir = v.split("=", 1)
+        variants.append((name, logdir))
 
     data = {}
     for d in DESIGNS:
-        data[d] = {
-            "A": parse_log(os.path.join(args.a_logs, f"{d}_run.log")),
-            "B": parse_log(os.path.join(args.b_logs, f"{d}.log")),
-        }
+        data[d] = {args.a_name: parse_log(os.path.join(args.a_logs, f"{d}_run.log"))}
+        for name, logdir in variants[1:]:
+            data[d][name] = parse_log(os.path.join(logdir, f"{d}.log"))
 
     os.makedirs(args.out, exist_ok=True)
     csv_path = os.path.join(args.out, "metrics.csv")
@@ -130,30 +132,41 @@ def main():
         w.writerow(["design", "variant", "final_wHPWL", "gp_iters",
                     "nlp_time_s", "total_time_s", "legal"])
         for d in DESIGNS:
-            for v in ("A", "B"):
-                r = data[d][v]
-                w.writerow([d, "center" if v == "A" else "uniform",
-                            r["final_hpwl"], r["gp_iters"],
+            for name, _ in variants:
+                r = data[d][name]
+                w.writerow([d, name, r["final_hpwl"], r["gp_iters"],
                             r["nlp_time"], r["total_time"], int(r["legal"])])
     print(f"[I] wrote {csv_path}")
 
+    names = [n for n, _ in variants]
     md_path = os.path.join(args.out, "metrics.md")
     with open(md_path, "w") as f:
-        f.write("| Design | wHPWL center (x1e6) | wHPWL uniform (x1e6) | delta | "
-                "GP iters (C/U) | flow time s (C/U) | legal (C/U) |\n")
-        f.write("|---|---|---|---|---|---|---|\n")
+        cols = " | ".join(f"{n} wHPWL (x1e6)" for n in names)
+        deltas = " | ".join(f"{n} delta" for n in names[1:])
+        f.write(f"| Design | {cols} | {deltas} | GP iters ({'/'.join(names)}) |\n")
+        f.write("|" + "---|" * (1 + len(names) + len(names) - 1 + 1) + "\n")
         for d in DESIGNS:
-            a, b = data[d]["A"], data[d]["B"]
-            delta = (b["final_hpwl"] - a["final_hpwl"]) / a["final_hpwl"] * 100
-            f.write(f"| {d} | {a['final_hpwl']/1e6:.2f} | {b['final_hpwl']/1e6:.2f} | "
-                    f"{delta:+.2f}% | {a['gp_iters']}/{b['gp_iters']} | "
-                    f"{a['total_time']:.1f}/{b['total_time']:.1f} | "
-                    f"{int(a['legal'])}/{int(b['legal'])} |\n")
+            base = data[d][names[0]]["final_hpwl"]
+            vals = " | ".join(f"{data[d][n]['final_hpwl']/1e6:.2f}" for n in names)
+            dl = " | ".join(
+                f"{(data[d][n]['final_hpwl'] - base) / base * 100:+.2f}%"
+                for n in names[1:])
+            its = "/".join(str(data[d][n]["gp_iters"]) for n in names)
+            f.write(f"| {d} | {vals} | {dl} | {its} |\n")
+        # geomean deltas
+        for n in names[1:]:
+            prod, cnt = 1.0, 0
+            for d in DESIGNS:
+                prod *= data[d][n]["final_hpwl"] / data[d][names[0]]["final_hpwl"]
+                cnt += 1
+            f.write(f"\ngeomean wHPWL delta {n}: {(prod ** (1 / cnt) - 1) * 100:+.2f}%")
+        f.write("\n")
     print(f"[I] wrote {md_path}")
     print(open(md_path).read())
 
-    plot_grid(data, "hpwl", "wHPWL (log)", os.path.join(args.out, "curves_hpwl.png"), logy=True)
-    plot_grid(data, "overflow", "density overflow",
+    plot_grid(data, variants, "hpwl", "wHPWL (log)",
+              os.path.join(args.out, "curves_hpwl.png"), logy=True)
+    plot_grid(data, variants, "overflow", "density overflow",
               os.path.join(args.out, "curves_overflow.png"))
 
 

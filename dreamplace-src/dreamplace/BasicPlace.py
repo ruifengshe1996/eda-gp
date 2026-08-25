@@ -269,7 +269,15 @@ class BasicPlace(nn.Module):
         self.init_pos = np.zeros(placedb.num_nodes * 2, dtype=placedb.dtype)
         # x position
         self.init_pos[0:placedb.num_physical_nodes] = placedb.node_x
-        if params.global_place_flag and getattr(params, "random_uniform_init_flag", 0):
+        if params.global_place_flag and getattr(params, "connectivity_grid_init_flag", 0):
+            # connectivity-aware seeds snapped to feasible bin-lattice anchors;
+            # takes precedence over the other init flags
+            import dreamplace.ConnectivityGridInit as ConnectivityGridInit
+            conn_x, conn_y = ConnectivityGridInit.connectivity_grid_init(placedb, params)
+            self.init_pos[0:placedb.num_movable_nodes] = conn_x
+            self.init_pos[placedb.num_nodes:placedb.num_nodes +
+                          placedb.num_movable_nodes] = conn_y
+        elif params.global_place_flag and getattr(params, "random_uniform_init_flag", 0):
             # spread movable cells uniformly over the whole placement region;
             # takes precedence over random_center_init_flag
             logging.info(
@@ -289,7 +297,9 @@ class BasicPlace(nn.Module):
         # y position
         self.init_pos[placedb.num_nodes:placedb.num_nodes +
                       placedb.num_physical_nodes] = placedb.node_y
-        if params.global_place_flag and getattr(params, "random_uniform_init_flag", 0):
+        if params.global_place_flag and getattr(params, "connectivity_grid_init_flag", 0):
+            pass  # x/y already set together above
+        elif params.global_place_flag and getattr(params, "random_uniform_init_flag", 0):
             self.init_pos[placedb.num_nodes:placedb.num_nodes +
                           placedb.num_movable_nodes] = np.random.uniform(
                               low=placedb.yl,
