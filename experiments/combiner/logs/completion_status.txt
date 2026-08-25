@@ -1,0 +1,4 @@
+shrink001/adaptec3 exit=0
+shrink001/bigblue1 exit=0
+shrink001/bigblue2 exit=0
+ALL_DONE

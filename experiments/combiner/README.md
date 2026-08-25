@@ -1,0 +1,69 @@
+# 实验 7:per-design 初始化组合器(路由表 + 神谕上限)
+
+三方分工(见 `docs/ADAPTEC4_DIAGNOSIS.md` E6 结案后的队列):本实验(cf)
+出完整路由表与组合器口径;asus 做路由信号离线回测;e0 做序→跌落机制
+刻画与动力学探针。组合结果**零新增 GPU 运行**——所有变体均为同机、同种子
+(deterministic, seed 1000)的已入库运行,组合即逐设计引用。
+
+## 数据补齐
+
+实验 6 的 shrink-001 缺 {a3,b1,b2},本实验按 e0 的配置协议补跑
+(σ=0.001,其在全部五个已测设计上占优;`experiments/conn_shrink/configs/
+{adaptec3,bigblue1,bigblue2}_s001.json`,日志在 `logs/`):
+a3 +0.38%(719 it)、**b1 −0.06%**(716 it,又一反超)、b2 +0.41%(701 it)。
+
+## 完整路由表(wHPWL delta vs 同机 center;粗体 = 每行最优)
+
+| 设计 | conn-grid | cap-spread | obsfield | obsspread | gift | shrink001 |
+|---|---|---|---|---|---|---|
+| adaptec1 | +0.06% | **−0.08%** | +0.06% | **−0.08%** | +0.50% | +0.11% |
+| adaptec2 | +2.04% | **−0.89%** | +0.49% | −0.81% | −0.56% | +1.76% |
+| adaptec3 | **+0.05%** | +1.09% | +0.26% | +0.37% | +0.59% | +0.38% |
+| adaptec4 | +3.60% | +3.09% | +3.59% | +3.46% | **+2.46%** | +2.55% |
+| bigblue1 | −0.13% | +0.22% | **−0.17%** | +0.20% | +0.33% | −0.06% |
+| bigblue2 | +0.85% | +0.35% | +0.93% | **+0.32%** | +3.15% | +0.41% |
+| bigblue3 | +1.15% | +20.70% | +0.91% | +20.89% | +5.14% | **+0.52%** |
+| bigblue4 | +0.01% | +3.50% | +0.31% | +4.10% | +3.42% | **−0.15%** |
+
+单一策略基线:obsfield +0.79%、conn-grid +0.95%、shrink001 +0.95%(8 设计
+补齐后)、gift +1.86%、uniform +2.10%、cap-spread +3.30%、obsspread +3.35%。
+
+## 组合器口径
+
+| 口径 | geomean | 说明 |
+|---|---|---|
+| oracle-always(全 6 变体) | **+0.25%** | 每设计取最优非中心变体 |
+| oracle-always(set4:obsf/obss/gift/shrink) | +0.29% | asus 提议的精简选集 |
+| **oracle-or-center**(center 入选集) | **−0.16%** | 无变体胜出则回退 center |
+
+oracle-or-center 的路由:a1 cap(−23% it)、a2 cap(−13% it)、b1 obsf、
+b4 shrink(+10% it),其余 center——**整体反超 center 0.16%,且 a1/a2 附带
+13-23% 迭代节省**。反超 center 的设计已达 4/8:a1(cap/obss)、
+a2(cap/obss/gift)、b1(obsf/shrink)、b4(shrink)。
+
+上限的结构:a4 的 +2.46% 地板(E6:预制序内在质量)是 oracle-always 转正
+的唯一主因;若 a4 被解决,全表 oracle-always ≈ −0.05%。
+
+## 路由信号(asus 回测,进行中)
+
+静态 3 阈值规则链(snap 膨胀比 → 锚几何 → obsspread 兜底)回测
+geomean +0.29~0.38%,8/8 与神谕一致或代价 <0.15pp。**三条告警**
+(asus,须随任何声称一并引用):(1) n=8 拟 3 阈值,过拟合风险极高,
+snap>7 边际极薄(6.86/7.64/7.81 相挤);(2) 部分利用率值为近似,待
+placedb 真值重算;(3) **可信化的唯一路径是 ISPD2015 盲测**(2005 冻结
+规则、2015 零调参),建议立项实验 8。
+
+动力学探针(e0,进行中):用 DREAMPlace CPU 路径跑 60 迭代真实
+WA+Nesterov 流、以质心漂移为"跌落风险"度量(每设计-初始化 5-10min 纯
+CPU)。E6 后续帧分析两发现支撑此路线:跌落轨迹与初始几何无关(warm 与
+shrink 逐点重合)、深跌更像动量+WA 梯度的相干失稳而非锚方向拉拽(b3 锚
+居中仍深跌 −38.7%)。若探针在 a4 复现 −3 vs −35 分离,路由升级为
+"先算场 → 60 迭代探针 → 按漂移选初始化",绕开全部静态信号告警。
+
+## 复现
+
+```bash
+# 数据补齐(3 运行,flock gpu0.lock)
+experiments/combiner/run_completion.sh
+# 口径计算:README 表格由 scripts/ab_report.py 各实验 metrics + 本文件手工汇总
+```

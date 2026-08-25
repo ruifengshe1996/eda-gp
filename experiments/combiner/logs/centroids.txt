@@ -1,0 +1,6 @@
+adaptec3 results/adaptec3/adaptec3.gp.pl: centroid (11436,10316) [dy -5.8% of h], area-weighted (11750,10397) [dy -5.4%], mean dist 6867
+adaptec3 shrink_results/s001/adaptec3/adaptec3.gp.pl: centroid (11705,10559) [dy -4.7% of h], area-weighted (11992,10599) [dy -4.6%], mean dist 6892
+bigblue1 results/bigblue1/bigblue1.gp.pl: centroid (4798,5835) [dy +4.6% of h], area-weighted (4822,5840) [dy +4.7%], mean dist 2491
+bigblue1 shrink_results/s001/bigblue1/bigblue1.gp.pl: centroid (4882,5732) [dy +3.7% of h], area-weighted (4903,5730) [dy +3.7%], mean dist 2492
+bigblue2 results/bigblue2/bigblue2.gp.pl: centroid (9287,9064) [dy -1.8% of h], area-weighted (9368,9111) [dy -1.5%], mean dist 5982
+bigblue2 shrink_results/s001/bigblue2/bigblue2.gp.pl: centroid (9268,9092) [dy -1.6% of h], area-weighted (9352,9138) [dy -1.4%], mean dist 5894
