@@ -97,3 +97,30 @@ python scripts/overflow_milestones.py adaptec4 adaptec1
 cd install && python ../scripts/pernet_hpwl_diff.py adaptec4 \
   results/adaptec4/adaptec4.gp.pl conn_results/adaptec4/adaptec4.gp.pl
 ```
+
+## 补充证据 E2b：obsfield 与 center 的逐网线归因（复核 E2 的变体不变性）
+
+*本节由会话 cf 补充（应 e0 队列建议执行，CPU-only，无新增 GPU 运行）；
+方法与 E2 相同（`scripts/pernet_hpwl_diff.py`），对象换为 obsfield
+（障碍感知场 + conn-grid 吸附）的最终布局。*
+
+E2 的三个签名在障碍感知变体上**全部复现**：
+
+- 总量 1.7362e8 vs 1.7984e8（+3.59%，与日志一致）；**弥散**：top-10 网线
+  占差距 2.6%、top-100 占 19.2%（E2 conn-grid：18.3%）、需 ~1000 条覆盖
+  （118.7%）；正负对冲 5.43e7 / −4.81e7，**对冲比 16.5×**（E2：16.9×）。
+- **度数段分摊同型**：度 2-3 占 52.0%（线长份额 62.6%），度 11-100 略超摊
+  （23.9% / 14.4%），无高扇出主导。
+- **紧凑度相同、全局质心同向平移**：到质心平均距离 5404 vs center 5413；
+  可动质心 y = 11400 vs center 13106 —— 比 conn-grid（11597）**下移得更多**
+  （−1706 vs −1509，芯片高约 24k），空间差距图同样呈中部偶极子形态。
+
+含义：障碍投影虽在 adaptec2 上修复了错侧损失，但在 adaptec4 上它给出的
+嵌入与 conn-grid 属于**同一个embedding 族**（质心下移、全网弥散重排一致），
+进一步坐实 E1/E2 的结论——adaptec4 的劣势是场类初始化的族性质，与障碍
+处理无关。所有场变体的质量中心都被拉向芯片下部，而 center-melt 收敛在更
+高的位置；这个系统性偏移与固定锚（IO/宏）在 Jacobi 松弛中的边界作用一致，
+值得在 S2（GiFt 全局解）结果中检验是否同样出现。
+
+复现：`cd install && python ../scripts/pernet_hpwl_diff.py adaptec4 \
+  results/adaptec4/adaptec4.gp.pl obsfield_results/adaptec4/adaptec4.gp.pl`
