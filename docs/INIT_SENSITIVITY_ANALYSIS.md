@@ -103,6 +103,10 @@ side of blockages. adaptec4 degrades under every non-center init tried.
   adaptec2/4 failures. Alternatively replace slow local smoothing with a
   spectral / multilevel embedding (the repo's `gift_init_flag` GiFt operator
   is exactly such a graph-filter init and should be A/B'd as a reference).
+  *Outcome (experiments/obstacle_field): confirmed for adaptec2 (+2.04% ->
+  +0.49%), best non-center variant overall (+0.79% geomean vs conn-grid's
+  +0.95%); adaptec4 unmoved (its loss is not obstacle-related) and the
+  spread pipeline / bigblue3 collapse unaffected.*
 - **D3 (M1 + speed) Capacity-constrained snapping.** Replace nearest-anchor
   snapping with a capacity-limited assignment (cells per anchor bounded by
   local free area — greedy rank assignment or approximate optimal transport
