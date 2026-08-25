@@ -910,7 +910,19 @@ class PlaceObj(nn.Module):
             overflow_avg = overflow
         else:
             overflow_avg = overflow
+        # optional warm-up: pretend overflow decays from 1.0 so that a
+        # low-overflow (scattered) start still begins with a smooth WL model
+        warmup = int(getattr(self.params, "gamma_warmup_iters", 0))
+        if warmup > 0 and iteration < warmup:
+            floor = 1.0 - float(iteration) / warmup
+            overflow_avg = overflow_avg.clamp(min=floor)
         coef = torch.pow(10, (overflow_avg - 0.1) * 20 / 9 - 1)
+        # optional monotone envelope: never re-loosen gamma on overflow rebounds
+        if int(getattr(self.params, "gamma_monotone_flag", 0)):
+            if not hasattr(self, "gamma_coef_min"):
+                self.gamma_coef_min = float(coef)
+            self.gamma_coef_min = min(self.gamma_coef_min, float(coef))
+            coef = torch.tensor(self.gamma_coef_min)
         self.gamma.data.fill_((base_gamma * coef).item())
         return True
 

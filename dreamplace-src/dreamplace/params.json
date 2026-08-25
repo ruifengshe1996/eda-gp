@@ -120,6 +120,34 @@
     "description" : "damping factor of the connectivity sweeps",
     "default" : 0.7
     },
+"conn_capacity_spread_flag" : {
+    "description" : "spread connectivity_grid_init seeds by free-area-balanced recursive bisection (bounded local density) instead of nearest-anchor snapping",
+    "default" : 0
+    },
+"conn_spread_leaf_size" : {
+    "description" : "max cells per leaf in the capacity spreading bisection",
+    "default" : 16
+    },
+"conn_spread_density_slack" : {
+    "description" : "capacity spreading clips a region only above slack x average fill of its free area",
+    "default" : 1.5
+    },
+"conn_obstacle_project_flag" : {
+    "description" : "project connectivity sweeps out of fixed-node regions each iteration (obstacle-aware field)",
+    "default" : 0
+    },
+"gamma_warmup_iters" : {
+    "description" : "treat overflow as decaying from 1.0 over this many iterations when updating gamma (smooth-WL warm-up for scattered inits)",
+    "default" : 0
+    },
+"gamma_monotone_flag" : {
+    "description" : "never re-loosen gamma when overflow rebounds (monotone envelope)",
+    "default" : 0
+    },
+"density_weight_warmup_iters" : {
+    "description" : "freeze the density weight for this many Llambda iterations, then re-normalize it against the current state",
+    "default" : 0
+    },
 "random_uniform_init_flag" : {
     "description" : "initialize movable cells uniformly over the placement region; takes precedence over random_center_init_flag",
     "default" : 0

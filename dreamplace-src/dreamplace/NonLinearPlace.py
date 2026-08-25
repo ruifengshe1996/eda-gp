@@ -700,15 +700,25 @@ class NonLinearPlace(BasicPlace.BasicPlace):
                             ):
                                 break
                         Llambda_flat_iteration += 1
-                        # update density weight
+                        # update density weight; optionally hold it frozen for a
+                        # warm-up phase and re-normalize at the warm-up boundary
+                        # (so scattered inits re-enter the standard homotopy)
+                        dw_warmup = int(getattr(params, "density_weight_warmup_iters", 0))
                         if Llambda_flat_iteration > 1:
-                            model.op_collections.update_density_weight_op(
-                                Llambda_metrics[-1][-1],
-                                Llambda_metrics[-2][-1]
-                                if len(Llambda_metrics) > 1
-                                else Lgamma_metrics[-2][-1][-1],
-                                Llambda_flat_iteration,
-                            )
+                            if Llambda_flat_iteration <= dw_warmup + 1:
+                                if Llambda_flat_iteration == dw_warmup + 1:
+                                    model.initialize_density_weight(params, placedb)
+                                    logging.info(
+                                        "re-initialized density weight after %d warm-up iterations: %.6E"
+                                        % (dw_warmup, model.density_weight.data.item()))
+                            else:
+                                model.op_collections.update_density_weight_op(
+                                    Llambda_metrics[-1][-1],
+                                    Llambda_metrics[-2][-1]
+                                    if len(Llambda_metrics) > 1
+                                    else Lgamma_metrics[-2][-1][-1],
+                                    Llambda_flat_iteration,
+                                )
                         # logging.debug("update density weight %.3f ms" % ((time.time()-t2)*1000))
                         if Llambda_stop_criterion(Lgamma_step, Llambda_density_weight_step, Llambda_metrics):
                             break
