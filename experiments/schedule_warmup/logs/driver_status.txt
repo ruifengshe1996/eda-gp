@@ -1,0 +1,19 @@
+no Placer running for 5 checks, proceeding
+acquired gpu0.lock
+gmono/adaptec1 exit=0
+warm/adaptec1 exit=0
+warmmono/adaptec1 exit=0
+gmono/adaptec2 exit=0
+warm/adaptec2 exit=0
+warmmono/adaptec2 exit=0
+gmono/adaptec4 exit=0
+warm/adaptec4 exit=0
+warmmono/adaptec4 exit=0
+gmono/bigblue3 exit=0
+warm/bigblue3 exit=0
+warmmono/bigblue3 exit=0
+seed_center_2000 exit=0
+seed_conngrid_2000 exit=0
+seed_center_3000 exit=0
+seed_conngrid_3000 exit=0
+ALL_DONE

@@ -36,6 +36,10 @@ INK2 = "#52514e"
 
 
 def parse_log(path):
+    # tolerate partial experiments: a missing log drops the design from the
+    # report instead of crashing
+    if not os.path.exists(path):
+        return None
     iters, hpwl, overflow = [], [], []
     final_hpwl = final_iter = nlp_time = total_time = None
     plot_time = 0.0
@@ -82,9 +86,12 @@ def style_axis(ax):
     ax.tick_params(colors=INK2, labelsize=8)
 
 
-def plot_grid(data, variants, key, ylabel, out_path, logy=False):
+def plot_grid(data, variants, key, ylabel, out_path, designs=None, logy=False):
+    designs = designs if designs is not None else DESIGNS
     fig, axes = plt.subplots(2, 4, figsize=(14, 6.5), facecolor="white")
-    for ax, design in zip(axes.flat, DESIGNS):
+    for ax in axes.flat[len(designs):]:
+        ax.set_visible(False)
+    for ax, design in zip(axes.flat, designs):
         for (name, _), color in zip(variants, PALETTE):
             r = data[design][name]
             ax.plot(r["iters"], r[key], color=color, linewidth=2, label=name)
@@ -124,6 +131,11 @@ def main():
         data[d] = {args.a_name: parse_log(os.path.join(args.a_logs, f"{d}_run.log"))}
         for name, logdir in variants[1:]:
             data[d][name] = parse_log(os.path.join(logdir, f"{d}.log"))
+    # keep only designs for which every variant has a log
+    active = [d for d in DESIGNS if all(data[d][n] is not None for n, _ in variants)]
+    dropped = [d for d in DESIGNS if d not in active]
+    if dropped:
+        print(f"[W] dropped designs with missing logs: {', '.join(dropped)}")
 
     os.makedirs(args.out, exist_ok=True)
     csv_path = os.path.join(args.out, "metrics.csv")
@@ -131,7 +143,7 @@ def main():
         w = csv.writer(f)
         w.writerow(["design", "variant", "final_wHPWL", "gp_iters",
                     "nlp_time_s", "total_time_s", "legal"])
-        for d in DESIGNS:
+        for d in active:
             for name, _ in variants:
                 r = data[d][name]
                 w.writerow([d, name, r["final_hpwl"], r["gp_iters"],
@@ -145,7 +157,7 @@ def main():
         deltas = " | ".join(f"{n} delta" for n in names[1:])
         f.write(f"| Design | {cols} | {deltas} | GP iters ({'/'.join(names)}) |\n")
         f.write("|" + "---|" * (1 + len(names) + len(names) - 1 + 1) + "\n")
-        for d in DESIGNS:
+        for d in active:
             base = data[d][names[0]]["final_hpwl"]
             vals = " | ".join(f"{data[d][n]['final_hpwl']/1e6:.2f}" for n in names)
             dl = " | ".join(
@@ -156,7 +168,7 @@ def main():
         # geomean deltas
         for n in names[1:]:
             prod, cnt = 1.0, 0
-            for d in DESIGNS:
+            for d in active:
                 prod *= data[d][n]["final_hpwl"] / data[d][names[0]]["final_hpwl"]
                 cnt += 1
             f.write(f"\ngeomean wHPWL delta {n}: {(prod ** (1 / cnt) - 1) * 100:+.2f}%")
@@ -165,9 +177,9 @@ def main():
     print(open(md_path).read())
 
     plot_grid(data, variants, "hpwl", "wHPWL (log)",
-              os.path.join(args.out, "curves_hpwl.png"), logy=True)
+              os.path.join(args.out, "curves_hpwl.png"), designs=active, logy=True)
     plot_grid(data, variants, "overflow", "density overflow",
-              os.path.join(args.out, "curves_overflow.png"))
+              os.path.join(args.out, "curves_overflow.png"), designs=active)
 
 
 if __name__ == "__main__":
