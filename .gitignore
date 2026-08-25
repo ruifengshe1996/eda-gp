@@ -1,0 +1,12 @@
+# python
+venv/
+__pycache__/
+*.pyc
+# local dependency installs (rebuildable, see README)
+deps/
+# build & install products
+install/
+dreamplace-src/build/
+# benchmark data (download via benchmarks/ispd2005_2015.py or tarball)
+dreamplace-src/benchmarks/ispd2005/
+results/
