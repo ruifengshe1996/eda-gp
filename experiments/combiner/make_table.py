@@ -18,17 +18,20 @@ GP = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DESIGNS = ["adaptec1", "adaptec2", "adaptec3", "adaptec4",
            "bigblue1", "bigblue2", "bigblue3", "bigblue4"]
 # name -> (log dir, filename pattern)
+# conn-family columns point at the post-conn-y-fix rerun (experiments/conn_rebuild);
+# center and gift are unaffected by the bug and keep their original logs.
+# cap-spread is dropped: dominated by obsspread, not rerun (accidental-variant
+# numbers remain in experiments/obstacle_field/logs/cap_spread if ever needed).
 VARIANTS = {
     "center":    ("experiments/obstacle_field/logs/center", "{d}_run.log"),
-    "conn-grid": ("experiments/obstacle_field/logs/conn_grid", "{d}.log"),
-    "cap-spread": ("experiments/obstacle_field/logs/cap_spread", "{d}.log"),
-    "obsfield":  ("experiments/obstacle_field/logs/obsfield", "{d}.log"),
-    "obsspread": ("experiments/obstacle_field/logs/obsspread", "{d}.log"),
+    "conn-grid": ("experiments/conn_rebuild/logs/conngrid", "{d}.log"),
+    "obsfield":  ("experiments/conn_rebuild/logs/obsfield", "{d}.log"),
+    "obsspread": ("experiments/conn_rebuild/logs/obsspread", "{d}.log"),
     "gift":      ("experiments/gift_init/logs", "{d}.log"),
-    "shrink001": ("experiments/conn_shrink/logs", "{d}_s001.log"),
+    "shrink001": ("experiments/conn_rebuild/logs/shrink001", "{d}.log"),
 }
-# completion runs for shrink001 a3/b1/b2 live in the combiner dir
-SHRINK_FALLBACK = ("experiments/combiner/logs", "{d}_shrink001.log")
+# no fallback: shrink001 completion runs were pre-fix and are superseded
+SHRINK_FALLBACK = (None, None)
 SET4 = ("obsfield", "obsspread", "gift", "shrink001")
 
 FINAL_RE = re.compile(r"iteration\s+(\d+), wHPWL (\S+), time")
@@ -61,7 +64,7 @@ for d in DESIGNS:
         if v == "center":
             continue
         r = parse(os.path.join(GP, dirpath, pat.format(d=d)))
-        if r is None and v == "shrink001":
+        if r is None and v == "shrink001" and SHRINK_FALLBACK[0]:
             r = parse(os.path.join(GP, SHRINK_FALLBACK[0], SHRINK_FALLBACK[1].format(d=d)))
         if r is not None:
             row[v] = ((r[0] / base[0] - 1) * 100, r[1])
@@ -86,16 +89,26 @@ for d in DESIGNS:
 out.append("")
 for v in names:
     ds = [table[d][0][v][0] for d in DESIGNS if v in table[d][0]]
+    if not ds:
+        out.append(f"- always-{v}: (no logs yet)")
+        continue
     tag = "" if len(ds) == len(DESIGNS) else f" (n={len(ds)})"
     out.append(f"- always-{v}: {geomean(ds):+.2f}%{tag}")
 
-full = [min(r[v][0] for v in r) for r, _ in table.values()]
-set4 = [min(r[v][0] for v in r if v in SET4) for r, _ in table.values()]
+complete = [d for d in DESIGNS if table[d][0]]
+full = [min(v[0] for v in table[d][0].values()) for d in complete]
+set4 = [min((v[0] for k, v in table[d][0].items() if k in SET4), default=None) for d in complete]
+set4 = [x for x in set4 if x is not None]
 orc = [min(0.0, m) for m in full]
 out.append("")
-out.append(f"- oracle-always (all variants): {geomean(full):+.2f}%")
-out.append(f"- oracle-always (set4 {'/'.join(SET4)}): {geomean(set4):+.2f}%")
-out.append(f"- oracle-or-center: {geomean(orc):+.2f}%")
+if len(complete) < len(DESIGNS):
+    out.append(f"NOTE: oracle bounds over {len(complete)}/8 designs with any variant log")
+if full:
+    out.append(f"- oracle-always (all variants): {geomean(full):+.2f}%")
+if set4:
+    out.append(f"- oracle-always (set4 {'/'.join(SET4)}): {geomean(set4):+.2f}%")
+if orc:
+    out.append(f"- oracle-or-center: {geomean(orc):+.2f}%")
 
 dest = os.path.join(GP, "experiments/combiner/routing_table.md")
 open(dest, "w").write("\n".join(out) + "\n")
