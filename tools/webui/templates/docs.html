@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}分析文档 · EDA-GP{% endblock %}
+{% block content %}
+<h1 class="page-title">分析文档</h1>
+{% if not items %}
+<p class="empty-hint">未找到文档（docs/*.md 与根 README.md 均不存在）。</p>
+{% else %}
+<div class="docs-layout">
+  <nav class="docs-nav" id="docs-nav">
+    {% for it in items %}
+    <a href="#{{ it.rel }}" data-rel="{{ it.rel }}">{{ it.label }}</a>
+    {% endfor %}
+  </nav>
+  <article class="markdown-body docs-content" id="doc-content">
+    <p class="empty-hint">从左侧选择一篇文档。</p>
+  </article>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>initDocsPage();</script>
+{% endblock %}

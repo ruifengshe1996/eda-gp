@@ -13,3 +13,7 @@ results/
 # generated visualizations stay local (regenerable from logs+scripts; served by tools/webui)
 experiments/**/*.png
 viz/**/*.png
+# webui local artifacts
+tools/webui/static/vendor/
+tools/webui/webui.log
+tools/webui/.daemon.lock

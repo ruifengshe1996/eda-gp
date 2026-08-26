@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% block title %}{{ name }} · EDA-GP{% endblock %}
+{% block content %}
+<h1 class="page-title">
+  实验：{{ name }}
+  {% if errata %}<span class="badge badge-warn" title="README 含勘误横幅">⚠️ 勘误</span>{% endif %}
+</h1>
+
+<div class="tabs" id="tabs">
+  <button class="tab active" data-tab="intro">介绍</button>
+  <button class="tab" data-tab="viz">可视化</button>
+  <button class="tab" data-tab="metrics">A/B 结果</button>
+</div>
+
+<!-- ============ Tab: 介绍 ============ -->
+<section class="tab-panel" id="panel-intro">
+  <article class="markdown-body" id="readme" data-md="experiments/{{ name }}/README.md">
+    <p class="loading">正在加载 README…</p>
+  </article>
+  <details class="commits-box" id="commits-box">
+    <summary>核心代码改动（git 提交与 diff）</summary>
+    <div id="commits-body"><p class="loading">展开后加载…</p></div>
+  </details>
+</section>
+
+<!-- ============ Tab: 可视化 ============ -->
+<section class="tab-panel hidden" id="panel-viz">
+
+  <h2>收敛曲线（日志现场解析）</h2>
+  <div class="curves-block" id="curves-block">
+    <div class="curves-controls" id="curves-controls">
+      <p class="loading">正在解析日志…</p>
+    </div>
+    <div class="chart-wrap"><canvas id="chart-whpwl"></canvas></div>
+    <div class="chart-wrap"><canvas id="chart-overflow"></canvas></div>
+  </div>
+
+  {% if viz.curves %}
+  <h2>收敛曲线图（预生成 PNG）</h2>
+  <div class="img-grid">
+    {% for c in viz.curves %}
+    <figure class="img-cell wide">
+      <img class="zoomable" loading="lazy"
+           src="{{ url_for('image', rel='experiments/' + name + '/' + c) }}" alt="{{ c }}">
+      <figcaption>{{ c }}</figcaption>
+    </figure>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% if viz.groups %}
+    {% for g in viz.groups %}
+    <h2>拼图切片 · {{ g.name }}</h2>
+    {% if g.montages %}
+    <div class="img-grid">
+      {% for m in g.montages %}
+      <figure class="img-cell wide">
+        <img class="zoomable" loading="lazy"
+             src="{{ url_for('image', rel='experiments/' + name + '/' + m) }}" alt="{{ m }}">
+        <figcaption>{{ m.split('/')[-1] }}</figcaption>
+      </figure>
+      {% endfor %}
+    </div>
+    {% endif %}
+    {% if g.designs %}
+    <div class="slice-row">
+      <span class="slice-row-label">单切片浏览：</span>
+      {% for dsg in g.designs %}
+      <button class="btn slice-btn" data-group="{{ loop.index0 }}"
+              data-gname="{{ g.name }}" data-design="{{ dsg.name }}">
+        {{ dsg.name }}（{{ dsg.slices|length }} 片）
+      </button>
+      {% endfor %}
+    </div>
+    {% endif %}
+    {% endfor %}
+  {% else %}
+  <p class="empty-hint">该实验没有本地可视化图片（viz/ 目录为空或不存在；拼图只在生成过的机器上有）。</p>
+  {% endif %}
+</section>
+
+<!-- ============ Tab: A/B 结果 ============ -->
+<section class="tab-panel hidden" id="panel-metrics">
+  {% if has_metrics_md %}
+  <h2>metrics.md</h2>
+  <article class="markdown-body" data-md="experiments/{{ name }}/metrics.md">
+    <p class="loading">正在加载…</p>
+  </article>
+  {% endif %}
+
+  {% if csv_table %}
+  <h2>metrics.csv</h2>
+  <div class="table-scroll">
+    <table class="data-table">
+      <thead><tr>{% for h in csv_table.header %}<th>{{ h }}</th>{% endfor %}</tr></thead>
+      <tbody>
+        {% for row in csv_table.rows %}
+        <tr>{% for c in row %}<td>{{ c }}</td>{% endfor %}</tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if csv_table.truncated %}<p class="note">（行数过多，已截断显示）</p>{% endif %}
+  {% endif %}
+
+  {% for f in extra_md %}
+  <h2>{{ f }}</h2>
+  <article class="markdown-body" data-md="experiments/{{ name }}/{{ f }}">
+    <p class="loading">正在加载…</p>
+  </article>
+  {% endfor %}
+
+  {% if results_section %}
+  <h2>README 结果表节（该实验无 metrics 文件）</h2>
+  <article class="markdown-body" id="readme-results"></article>
+  {% endif %}
+
+  {% if not has_metrics_md and not csv_table and not extra_md and not results_section %}
+  <p class="empty-hint">该实验没有 metrics.md / metrics.csv，README 中也未找到结果表节。</p>
+  {% endif %}
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+window.EXP = {
+  name: {{ name|tojson }},
+  imgBase: "/img/experiments/" + encodeURIComponent({{ name|tojson }}) + "/",
+  viz: {{ viz|tojson }},
+  resultsSection: {{ (results_section or "")|tojson }}
+};
+initExpPage();
+</script>
+{% endblock %}

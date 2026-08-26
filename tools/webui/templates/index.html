@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}实验总览 · EDA-GP{% endblock %}
+{% block content %}
+<h1 class="page-title">实验总览</h1>
+{% if not experiments %}
+<p class="empty-hint">未找到任何实验目录（experiments/ 为空或不存在）。</p>
+{% endif %}
+<div class="card-grid">
+  {% for e in experiments %}
+  <a class="card" href="{{ url_for('exp_detail', name=e.name) }}">
+    <div class="card-head">
+      <span class="card-name">{{ e.name }}</span>
+      {% if e.errata %}<span class="badge badge-warn" title="README 含勘误横幅">⚠️ 勘误</span>{% endif %}
+    </div>
+    <div class="card-title">{{ e.title }}</div>
+    {% if e.summary %}<p class="card-summary">{{ e.summary }}</p>{% endif %}
+    {% if e.geomean %}
+    <div class="geo-wrap">
+      <div class="geo-label">geomean（{{ e.geomean.source }}）</div>
+      {% if e.geomean.row is defined and e.geomean.row %}
+      <table class="geo-table">
+        {% if e.geomean.header %}
+        <tr>{% for h in e.geomean.header %}<th>{{ h }}</th>{% endfor %}</tr>
+        {% endif %}
+        <tr>{% for c in e.geomean.row %}<td>{{ c }}</td>{% endfor %}</tr>
+      </table>
+      {% else %}
+      <ul class="geo-lines">
+        {% for l in e.geomean.lines %}<li>{{ l }}</li>{% endfor %}
+      </ul>
+      {% endif %}
+    </div>
+    {% endif %}
+    <div class="card-meta">
+      {% if e.has_metrics %}<span class="chip">metrics.md</span>{% endif %}
+      {% if e.has_csv %}<span class="chip">metrics.csv</span>{% endif %}
+      {% if e.n_logs %}<span class="chip">{{ e.n_logs }} 个日志</span>{% endif %}
+    </div>
+  </a>
+  {% endfor %}
+</div>
+{% endblock %}
