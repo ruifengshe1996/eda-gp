@@ -770,6 +770,21 @@ class PlaceObj(nn.Module):
         @param params parameters
         @param placedb placement database
         """
+        # N1 schedule state-alignment: enter the lambda schedule at the value
+        # a reference (center-init) trajectory had at this design's initial
+        # overflow, instead of pinning the t=0 force ratio to 1 : 8e-5 (which
+        # forces every init, however well spread, through a WL re-collapse)
+        abs_dw = float(getattr(params, "initial_density_weight_absolute", 0.0))
+        if abs_dw > 0 and len(self.placedb.regions) == 0:
+            density = self.op_collections.density_op(self.data_collections.pos[0])
+            self.init_density = density.data.clone()
+            self.density_weight = torch.tensor(
+                [abs_dw],
+                dtype=self.data_collections.pos[0].dtype,
+                device=self.data_collections.pos[0].device)
+            logging.info("state-aligned initial density weight = %.6E" % abs_dw)
+            return self.density_weight
+
         wirelength = self.op_collections.wirelength_op(
             self.data_collections.pos[0])
         if self.data_collections.pos[0].grad is not None:

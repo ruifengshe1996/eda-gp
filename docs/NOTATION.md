@@ -62,6 +62,7 @@
 | 实验 R | `experiments/conn_rebuild` | conn-y 缺陷修复后 conn 系全量重跑（33 运行），修复后权威数据 | 干净 |
 | 实验 8（计划） | — | ISPD2015 盲测（全量、路由预注册、零调参） | — |
 | 实验 9（计划） | — | 熔化点位置对照（注册预测：adaptec3 底边点熔化应胜修复版连通性场初始化） | — |
+| 实验 10 | `experiments/align_filler` | N1 调度状态对齐 × N2 逆密度 filler 播种的 2×2 消融，基座 obsspread（(off,off) 臂复用实验 R） | 干净 |
 
 ## 3. 编号系列（均出自 `docs/` 分析文档）
 

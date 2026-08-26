@@ -376,6 +376,41 @@ class BasicPlace(nn.Module):
                     size=filler_end - filler_beg,
                 )
 
+            elif getattr(params, "filler_init_density_aware_flag", 0):
+                # N2: seed fillers into the whitespace complement of the
+                # initial cell distribution (inverse-density sampling over a
+                # coarse grid) so the t=0 composite density field is as flat
+                # as the netlist allows; uniform seeding puts fillers on top
+                # of spread/ordered inits and pushes real cells off their
+                # prepared positions from the very first iteration
+                nb = 64
+                bw = (placedb.xh - placedb.xl) / nb
+                bh = (placedb.yh - placedb.yl) / nb
+                nphys = placedb.num_physical_nodes
+                cx = self.init_pos[:nphys] + placedb.node_size_x[:nphys] / 2
+                cy = (self.init_pos[placedb.num_nodes:placedb.num_nodes + nphys]
+                      + placedb.node_size_y[:nphys] / 2)
+                ix = np.clip(((cx - placedb.xl) / bw).astype(np.int64), 0, nb - 1)
+                iy = np.clip(((cy - placedb.yl) / bh).astype(np.int64), 0, nb - 1)
+                occ = np.zeros(nb * nb)
+                np.add.at(occ, ix * nb + iy,
+                          placedb.node_size_x[:nphys] * placedb.node_size_y[:nphys])
+                free = np.maximum(bw * bh * params.target_density - occ, 0.0)
+                if free.sum() <= 0:
+                    free[:] = 1.0
+                bins = np.random.choice(nb * nb, size=placedb.num_filler_nodes,
+                                        p=free / free.sum())
+                px = placedb.xl + (bins // nb + np.random.uniform(size=bins.size)) * bw
+                py = placedb.yl + (bins % nb + np.random.uniform(size=bins.size)) * bh
+                logging.info("density-aware filler seeding over %dx%d grid" % (nb, nb))
+                self.init_pos[placedb.num_physical_nodes : placedb.num_nodes] = np.clip(
+                    px, placedb.xl,
+                    placedb.xh - placedb.node_size_x[-placedb.num_filler_nodes])
+                self.init_pos[
+                    placedb.num_nodes + placedb.num_physical_nodes : placedb.num_nodes * 2
+                ] = np.clip(
+                    py, placedb.yl,
+                    placedb.yh - placedb.node_size_y[-placedb.num_filler_nodes])
             else:
                 self.init_pos[placedb.num_physical_nodes : placedb.num_nodes] = np.random.uniform(
                     low=placedb.xl,
