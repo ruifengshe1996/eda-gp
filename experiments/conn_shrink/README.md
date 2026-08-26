@@ -1,5 +1,13 @@
 # 实验 6：conn-shrink——序内容 vs 轨迹历史的判别实验
 
+> ⚠ **勘误（2026-08-26）**：shrink 的真实初始态是**底边中点的点熔化**
+> （x 压缩居中、y 被 bug 覆盖至底边直线），"复刻 center 几何、唯序
+> 不同"的声称不成立，"罪在序内容"判决**撤销**——详见
+> `docs/ADAPTEC4_DIAGNOSIS.md` 勘误节（修复 434fa96）。b1/b3/b4 的
+> 亮点数字重释为**熔化点位置效应**（与实验 5 的迁移方向符号规则互
+> 洽），修复后待重跑验证。
+
+
 对应 `docs/ADAPTEC4_DIAGNOSIS.md` E5b 的判别设计：把连通性场解绕其面积
 加权质心整体收缩到 center-init 的几何状态（每轴 σ = `conn_shrink_scale` ×
 版图跨度；0.001 与 center 的 `random_center_init` 完全同量级），**保留场的
