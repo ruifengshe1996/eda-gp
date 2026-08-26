@@ -1,0 +1,15 @@
+n1/adaptec1 exit=0
+n2/adaptec1 exit=0
+n1n2/adaptec1 exit=0
+n1/adaptec2 exit=0
+n2/adaptec3 exit=0
+n2/adaptec4 exit=0
+n2/bigblue1 exit=0
+n2/bigblue2 exit=0
+n2/bigblue3 exit=0
+n2/bigblue4 exit=0
+n2/adaptec2 skip (done)
+probe/c8em4 exit=0
+probe/c8em3 exit=0
+PHASE_AB_DONE
+PROBE2_DONE

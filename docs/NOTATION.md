@@ -75,7 +75,7 @@
 | S1–S3 | ADAPTEC4_DIAGNOSIS | 后续实验计划（S1 多种子方差；S2 GiFt 判别；S3 场+重熔）；S1 已并入实验 3/4，S2 即实验 5 |
 | P0–P4 | RESULTS_SUMMARY | 修复后下一步优先级（P0 收缩邻域深挖；P1 调度×初始化联合重检；P2 ISPD2015 盲测；P3 bigblue3 展开修复；P4 stop_overflow 稳健性） |
 | C1–C5 | MECHANISM_ANALYSIS | 劣化机制论证链（C1 λ₀ 归一化强制重演熔化；C2 γ 瞬时映射过锐；C3 长程错误无修复通道；C4 场系残余损失的两个来源；C5 λ 更新律无阻尼振荡） |
-| N1–N6 | MECHANISM_ANALYSIS | 新机制方向（N1 调度状态对齐；N2 逆密度 filler 播种；N3 中途长程重排算子；N4 γ 空间局部化；N5 λ 目标轨迹控制器；N6 单步位移信赖域） |
+| N1–N6 | MECHANISM_ANALYSIS | 新机制方向（N1 调度状态对齐——**实验 10 证伪**；N2 逆密度 filler 播种——**实验 10 证伪**；N3 中途长程重排算子；N4 γ 空间局部化；N5 λ 目标轨迹控制器；N6 单步位移信赖域） |
 
 ## 4. 写作规范
 
