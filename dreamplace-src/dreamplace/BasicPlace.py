@@ -298,7 +298,9 @@ class BasicPlace(nn.Module):
         self.init_pos[placedb.num_nodes:placedb.num_nodes +
                       placedb.num_physical_nodes] = placedb.node_y
         if params.global_place_flag and getattr(params, "connectivity_grid_init_flag", 0):
-            pass  # x/y already set together above
+            # the unconditional node_y copy above clobbers conn_y; re-assign it
+            self.init_pos[placedb.num_nodes:placedb.num_nodes +
+                          placedb.num_movable_nodes] = conn_y
         elif params.global_place_flag and getattr(params, "random_uniform_init_flag", 0):
             self.init_pos[placedb.num_nodes:placedb.num_nodes +
                           placedb.num_movable_nodes] = np.random.uniform(
