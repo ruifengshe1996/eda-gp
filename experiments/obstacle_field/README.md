@@ -1,5 +1,12 @@
 # 实验 2：障碍感知连通性场（obstacle-aware connectivity field）
 
+> **⚠️ 勘误（2026-08-26，conn-y bug）**：本实验全部 GPU 运行受
+> BasicPlace.py 初始化 bug 影响（conn_y 被基准原始 y 覆盖，movable 全在
+> 底边）——实测变体是"x=场分布、y=底边直线"，并非本文描述的设计初始化。
+> 数字作为该意外变体的成绩真实可复现，但机制归因（障碍投影的作用、H1/H2
+> 检验）不成立，待修复后重跑（experiments/conn_rebuild/）重新评估。
+> center 列不受影响。修复提交：434fa96。
+
 分支 `dev_obstacle_field`，对应 `docs/INIT_SENSITIVITY_ANALYSIS.md` 的方向 **D2**：
 连通性场在计算时对固定宏障碍视而不见（仅在吸附步应用掩码），推测这是
 conn-grid 在 adaptec2/4 上退化、以及部分场塌缩的来源。本实验把障碍投影
