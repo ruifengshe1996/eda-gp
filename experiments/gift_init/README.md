@@ -1,5 +1,13 @@
 # 实验 5:GiFt 谱初始化 A/B(S2 判别)
 
+> **⚠️ 对照污染标注(2026-08-26,conn-y 初始化 bug)**:本实验的 GiFt 与
+> center 两列数据**不受** conn-y bug 影响(GiFt 走 NonLinearPlace 变换
+> 路径,center 走原生分支)。但文中所有与"场族(conn/obsfield/shrink)"的
+> 对比与机制推论(剂量-响应、跌落瞬态、质心迁移谱)引用的场族数据来自
+> 意外变体("x=场、y=底边"),相关叙述待 dev_fix_conn_y 修复重跑后由 e0
+> 统一修订(E5/E6 撤销重写)。
+
+
 分支延续 `dev_field_gate` 系列,承接 `docs/ADAPTEC4_DIAGNOSIS.md` 的 S2 判别:
 GiFt(ICCAD'24,仓库自带 `gift_init_flag`,graph-filter 谱嵌入)是二次目标的
 **全局解**,与 Jacobi 局部松弛(conn-grid 系)形成机制对照。判别逻辑:

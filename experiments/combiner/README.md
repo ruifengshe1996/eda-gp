@@ -1,5 +1,14 @@
 # 实验 7:per-design 初始化组合器(路由表 + 神谕上限)
 
+> **⚠️ 数据污染标注(2026-08-26,conn-y 初始化 bug)**:BasicPlace.py 的
+> y 段覆盖 bug(实验 0 起即存在,修复分支 dev_fix_conn_y)使 conn 系全部
+> GPU 运行(conn-grid / cap-spread / obsfield / obsspread / shrink001 列)
+> 实测的是"x=场分布、y=底边直线"的意外变体。**表中数字作为该意外变体的
+> 成绩仍然有效**(组合器测什么得什么),但其机制语义不成立;center 与
+> gift 列不受影响。路由表与规则链冻结暂缓,待修复后的核心 32 重跑
+> (asus 主责)落地后用 `make_table.py` 重算。
+
+
 三方分工(见 `docs/ADAPTEC4_DIAGNOSIS.md` E6 结案后的队列):本实验(cf)
 出完整路由表与组合器口径;asus 做路由信号离线回测;e0 做序→跌落机制
 刻画与动力学探针。组合结果**零新增 GPU 运行**——所有变体均为同机、同种子
@@ -25,8 +34,9 @@ a3 +0.38%(719 it)、**b1 −0.06%**(716 it,又一反超)、b2 +0.41%(701 it)。
 | bigblue3 | +1.15% | +20.70% | +0.91% | +20.89% | +5.14% | **+0.52%** |
 | bigblue4 | +0.01% | +3.50% | +0.31% | +4.10% | +3.42% | **−0.15%** |
 
-单一策略基线:obsfield +0.79%、conn-grid +0.95%、shrink001 +0.95%(8 设计
-补齐后)、gift +1.86%、uniform +2.10%、cap-spread +3.30%、obsspread +3.35%。
+单一策略基线:shrink001 +0.69%(8 设计补齐后)、obsfield +0.79%、
+conn-grid +0.95%、gift +1.86%、uniform +2.10%、cap-spread +3.30%、
+obsspread +3.35%。(由 `make_table.py` 自动再生,见 `routing_table.md`。)
 
 ## 组合器口径
 
