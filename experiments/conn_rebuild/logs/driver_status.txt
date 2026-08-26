@@ -1,0 +1,34 @@
+shrink001/adaptec4 exit=0
+conngrid/adaptec1 exit=0
+conngrid/adaptec2 exit=0
+conngrid/adaptec3 exit=0
+conngrid/adaptec4 exit=0
+conngrid/bigblue1 exit=0
+conngrid/bigblue2 exit=0
+conngrid/bigblue3 exit=0
+conngrid/bigblue4 exit=0
+shrink001/adaptec1 exit=0
+shrink001/adaptec2 exit=0
+shrink001/adaptec3 exit=0
+shrink001/adaptec4 skip (done)
+shrink001/bigblue1 exit=0
+shrink001/bigblue2 exit=0
+shrink001/bigblue3 exit=0
+shrink001/bigblue4 exit=0
+obsfield/adaptec1 exit=0
+obsfield/adaptec2 exit=0
+obsfield/adaptec3 exit=0
+obsfield/adaptec4 exit=0
+obsfield/bigblue1 exit=0
+obsfield/bigblue2 exit=0
+obsfield/bigblue3 exit=0
+obsfield/bigblue4 exit=0
+obsspread/adaptec1 exit=0
+obsspread/adaptec2 exit=0
+obsspread/adaptec3 exit=0
+obsspread/adaptec4 exit=0
+obsspread/bigblue1 exit=0
+obsspread/bigblue2 exit=0
+obsspread/bigblue3 exit=0
+obsspread/bigblue4 exit=0
+ALL_DONE

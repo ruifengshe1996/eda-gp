@@ -2,21 +2,21 @@
 
 | design | conn-grid | obsfield | obsspread | gift | shrink001 | center iters |
 |---|---|---|---|---|---|---|
-| adaptec1 | **+0.07% (543it)** | — | — | +0.50% (423it) | — | 613 |
-| adaptec2 | +0.58% (573it) | — | — | **-0.56% (428it)** | — | 642 |
-| adaptec3 | **+0.55% (574it)** | — | — | +0.59% (453it) | — | 681 |
-| adaptec4 | +0.20% (605it) | — | — | +2.46% (473it) | **+0.07% (715it)** | 717 |
-| bigblue1 | **+0.02% (644it)** | — | — | +0.33% (450it) | — | 679 |
-| bigblue2 | — | — | — | **+3.15% (471it)** | — | 666 |
-| bigblue3 | — | — | — | **+5.14% (958it)** | — | 997 |
-| bigblue4 | — | — | — | **+3.42% (565it)** | — | 848 |
+| adaptec1 | +0.07% (543it) | **-0.03% (547it)** | +0.24% (421it) | +0.50% (423it) | +0.04% (607it) | 613 |
+| adaptec2 | +0.58% (573it) | +0.37% (542it) | +1.14% (429it) | **-0.56% (428it)** | -0.11% (648it) | 642 |
+| adaptec3 | +0.55% (574it) | +0.63% (575it) | +0.15% (456it) | +0.59% (453it) | **-0.12% (690it)** | 681 |
+| adaptec4 | +0.20% (605it) | **+0.05% (597it)** | +1.40% (502it) | +2.46% (473it) | +0.07% (715it) | 717 |
+| bigblue1 | +0.02% (644it) | +0.01% (649it) | +0.21% (461it) | +0.33% (450it) | **+0.01% (674it)** | 679 |
+| bigblue2 | +0.94% (592it) | +0.99% (597it) | +1.21% (481it) | +3.15% (471it) | **-0.05% (660it)** | 666 |
+| bigblue3 | +0.86% (905it) | +0.75% (910it) | +9.27% (818it) | +5.14% (958it) | **-0.10% (1027it)** | 997 |
+| bigblue4 | -0.05% (727it) | **-0.07% (755it)** | +1.26% (561it) | +3.42% (565it) | -0.06% (923it) | 848 |
 
-- always-conn-grid: +0.28% (n=5)
-- always-obsfield: (no logs yet)
-- always-obsspread: (no logs yet)
+- always-conn-grid: +0.40%
+- always-obsfield: +0.34%
+- always-obsspread: +1.82%
 - always-gift: +1.86%
-- always-shrink001: +0.07% (n=1)
+- always-shrink001: -0.04%
 
-- oracle-always (all variants): +1.46%
-- oracle-always (set4 obsfield/obsspread/gift/shrink001): +1.56%
-- oracle-or-center: -0.07%
+- oracle-always (all variants): -0.11%
+- oracle-always (set4 obsfield/obsspread/gift/shrink001): -0.11%
+- oracle-or-center: -0.12%
