@@ -1,82 +1,65 @@
-# Experiment: connectivity-aware grid-anchored initialization
+# 实验 0b：连通性场初始化 —— 用网表结构预制秩序
 
-Branch `dev_conn_grid_init`. Third init strategy after center (baseline) and
-uniform ([experiments/uniform_init](../uniform_init/README.md)):
+## 背景
 
-1. **Connectivity-aware field**: `conn_init_sweeps` (32) damped Jacobi sweeps —
-   each movable cell moves toward the mean position of its net neighbors (nets
-   with degree > `ignore_net_degree` skipped), starting from a uniform scatter,
-   with fixed macros/IO as boundary anchors. This approximates a quadratic
-   (harmonic) placement: strongly connected cells end up near each other and
-   near their fixed pins.
-2. **Snap to lattice anchors**: every cell snaps to the nearest *feasible*
-   anchor, where anchors = bin-grid vertices + bin-edge midpoints (half-step
-   lattice minus bin centers).
-3. **Infeasible-region mask**: anchors covered by any fixed node's bounding box
-   or outside the layout are removed before snapping (e.g. adaptec1: 43% of
-   790k lattice points masked; bigblue4: 7.85M anchors remain).
+实验 0a 表明：均匀散开的初始化省 38% 迭代但损失 2.1% wHPWL，损失主要
+来自"随机秩序被冻结"——DREAMPlace 的梯度优化无法在铺开后完成单元间的
+长程互换，而默认中心初始化靠前期近纯线长下降的熔化阶段隐式解出了全局
+相对秩序。
 
-Implementation: `dreamplace/ConnectivityGridInit.py` + `connectivity_grid_init_flag`
-(precedence over the other init flags), knobs `conn_init_sweeps`, `conn_init_damping`.
-Init cost: ~0.3s (adaptec1, 211k cells) to ~12s (bigblue4, 2.2M cells), CPU numpy
-sweeps + KD-tree snap.
+## 动机
 
-## Results (full flow, seed 1000, all runs pass legality check)
+如果秩序才是关键，那就在初始化阶段**显式**求一个连通性感知的秩序：让
+每个单元趋向其所在网线其他引脚的平均位置。这个不动点问题的解是一个由
+固定引脚锚定的调和场（harmonic field）——相连的单元自然相邻，全局相对
+位置由网表结构而非随机性决定。把这样的场作为初始位置，预期能补回均匀
+初始化损失的大部分质量。
 
-See `metrics.md` / `metrics.csv`; three-way vs. baseline and uniform:
+## 方法
 
-| Design | center | uniform | conn-grid | uniform delta | conn-grid delta | GP iters (C/U/G) |
-|---|---|---|---|---|---|---|
-| adaptec1 | 72.79 | 73.21 | 72.85 | +0.58% | +0.08% | 611/381/611 |
-| adaptec2 | 81.89 | 81.66 | 83.62 | -0.29% | +2.11% | 646/396/626 |
-| adaptec3 | 193.02 | 194.45 | 193.08 | +0.74% | +0.03% | 679/412/657 |
-| adaptec4 | 173.56 | 180.04 | 179.72 | +3.74% | +3.55% | 716/420/677 |
-| bigblue1 | 89.25 | 89.45 | 89.13 | +0.23% | **-0.14%** | 682/407/688 |
-| bigblue2 | 136.86 | 141.07 | 138.01 | +3.07% | +0.84% | 674/409/623 |
-| bigblue3 | 304.35 | 319.66 | 307.87 | +5.03% | +1.16% | 993/723/1017 |
-| bigblue4 | 742.64 | 771.17 | 742.84 | +3.84% | +0.03% | 845/507/804 |
+1. **连通性场**：从均匀撒点出发做 32 次阻尼 Jacobi 扫掠（阻尼 0.7）：
+   每次把每个可动单元移向"其各网线中其他引脚位置均值"的均值，忽略度数
+   超过 100 的巨网；固定引脚不动，充当边界条件。
+2. **格点吸附**：场解通常聚成团且可重叠，将每个单元吸附到最近的
+   **可行格点锚点**——半 bin 步长的格点阵中扣除固定单元覆盖区后的点，
+   避免初始位置落在宏内部。
+3. 其余流程不动，与中心初始化 A/B。
 
-Geomean wHPWL delta: **conn-grid +0.95%** vs uniform +2.10%. wHPWL in x1e6.
+## 实现
 
-## Findings
+`dreamplace/ConnectivityGridInit.py`（新文件）：`_jacobi_sweeps`（向量化
+散射累加实现邻均值）、`_occupancy_raster`（固定单元的半步栅格化）、
+`_nearest_snap`（EDT 最近可行锚点）。开关 `connectivity_grid_init_flag`
+（默认关），扫掠数与阻尼可调（`conn_init_sweeps` / `conn_init_damping`）。
+在 `BasicPlace.py` 初始化分派中优先级最高。
 
-- **Quality**: conn-grid recovers most of what pure uniform loses. Four designs
-  are neutral-or-better (adaptec1/3, bigblue1/4; bigblue1 beats the baseline),
-  and the large-design penalty of uniform (+3.8..5.0%) collapses to +0.03..1.2%.
-  The connectivity sweeps restore the global relative order that uniform
-  scatter destroys — confirming that this ordering is exactly what center init
-  buys.
-- **Convergence**: unlike uniform (-38% iterations), conn-grid tracks the
-  baseline overflow trajectory almost exactly (same ~0.8 plateau, similar
-  iteration counts, slightly earlier descent on adaptec4/bigblue2/4). The
-  harmonic field re-clusters connected cells, so local density — and hence the
-  spreading work — is back to baseline-like levels.
-- **Outliers**: adaptec2 (+2.1%) and adaptec4 (+3.6%) still lose; adaptec4 is
-  init-sensitive for every non-center strategy tried so far.
-- Initial wHPWL is only ~1.3-1.5x the final value (uniform: 30-40x), so the
-  optimizer starts in a near-feasible basin. HPWL curves: `curves_hpwl.png`,
-  overflow: `curves_overflow.png`, snapshots: `viz/<design>/`.
+## 结果
 
-## Takeaway
+**原始运行的数据有效性**：本实验（及此后全部使用连通性初始化的实验）的
+GPU 运行受一个后来才发现的缺陷影响——`BasicPlace.py` 的 y 段初始化会
+无条件把 y 覆盖回基准文件原始值（ISPD2005 的可动单元原始 y 全在版图底
+行），因此实际被测的是**意外变体**"x = 场分布，y = 底行直线"。该变体的
+几何平均为 +0.95%（相对中心初始化），当时被当作连通性场的成绩。
 
-Connectivity-aware anchoring turns uniform init from "2% worse, 40% faster"
-into "1% worse, same speed" — i.e. it trades the speed win back for quality.
-Neither variant dominates center init on quality yet. Follow-ups: fewer/damped
-sweeps to *partially* preserve spread (interpolate between uniform and harmonic
-field), per-anchor capacity limits to avoid re-clustering (keep some of the
-uniform iteration savings), and a hybrid schedule (uniform-style low-overflow
-start + connectivity-ordered assignment).
+**修复后重跑**（实验 R，同机基线，权威数字）：
 
-## Reproduce
+| 设计 | wHPWL | 迭代 | 设计 | wHPWL | 迭代 |
+|---|---|---|---|---|---|
+| adaptec1 | +0.07% | −11% | bigblue1 | +0.02% | −5% |
+| adaptec2 | +0.58% | −10% | bigblue2 | +0.94% | −11% |
+| adaptec3 | +0.55% | −15% | bigblue3 | +0.86% | −9% |
+| adaptec4 | +0.20% | −15% | bigblue4 | −0.05% | −14% |
 
-```bash
-source env.sh && cd install
-for d in adaptec1 ... bigblue4; do
-  python dreamplace/Placer.py ../experiments/conn_grid_init/configs/$d.json
-done
-cd .. && python scripts/ab_report.py \
-  --variant "uniform=experiments/uniform_init/logs" \
-  --variant "conn-grid=experiments/conn_grid_init/logs" \
-  --out experiments/conn_grid_init
-python scripts/select_viz_slices.py --src install/conn_results --dst experiments/conn_grid_init/viz
-```
+几何平均 **+0.40%**，且**所有设计节省 5–15% 迭代**。
+
+## 反思
+
+修复后的结论比当年更好也更简单：二维连通性场把均匀初始化的 +2.10% 损失
+压到 +0.40%，同时保留了散开起点的迭代节省——"秩序 + 适度铺开"的组合在
+一个步骤里就实现了大半。有趣的是，仅有一维场信息的意外变体也拿到了
++0.95%：连通性秩序哪怕只作用于一个坐标轴也有实质价值。
+
+遗留的 +0.40% 差距集中于 adaptec2 / adaptec3 / bigblue2 / bigblue3
+四个设计（各 +0.5~0.9%），后续实验分别从障碍感知（实验 2）、展开与
+收缩几何（实验 1、6）追击。Jacobi 局部松弛与谱方法全局解的对比见
+实验 5。

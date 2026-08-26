@@ -1,76 +1,56 @@
-# Experiment: uniform initialization vs. center initialization
+# 实验 0a：均匀初始化 —— 全局布局对初始化敏感吗？
 
-Branch `dev_uniform_init`. Question: DREAMPlace initializes all movable cells in a
-tight Gaussian cluster at the layout center (`random_center_init_flag`); what
-happens if we instead scatter them **uniformly over the whole placement region**?
+## 背景
 
-## Change
+DREAMPlace（ePlace 系）把全局布局写成连续优化：最小化"WA 线长模型 +
+λ × 静电密度势能"，用 Nesterov 加速梯度法迭代，γ（线长模型平滑度）与
+λ（密度权重）随 overflow 变化按同伦调度演化，直至密度溢出 overflow 降到
+0.07。其默认初始化是**中心初始化**：所有可动单元堆到芯片中心（叠加
+0.1% 芯片宽的高斯噪声），随后经历一段密度项尚弱、近乎纯线长下降的
+"熔化阶段"再被密度力铺开。
 
-New `random_uniform_init_flag` parameter (default 0, takes precedence over
-`random_center_init_flag`) in `dreamplace/BasicPlace.py` + `dreamplace/params.json`:
-movable x ~ U(xl, xh - w_i), y ~ U(yl, yh - h_i). Everything else (seed 1000,
-deterministic, WA wirelength, nesterov, ISPD2005 configs) identical to the
-baseline in `docs/ISPD2005_BASELINE.md`.
+一个自然的疑问：既然目标函数里已经同时有线长与密度两项，初始化理论上
+不应影响最终质量——那为什么默认要从中心的一个点出发？
 
-## Results (full flow GP + LG + DP, all runs pass legality check)
+## 动机
 
-| Design | wHPWL center (x1e6) | wHPWL uniform (x1e6) | delta | GP iters (C/U) | flow time s (C/U)* |
-|---|---|---|---|---|---|
-| adaptec1 | 72.79 | 73.21 | +0.58% | 611/381 | 9.9/6.2 |
-| adaptec2 | 81.89 | 81.66 | -0.29% | 646/396 | 13.0/7.7 |
-| adaptec3 | 193.02 | 194.45 | +0.74% | 679/412 | 22.1/9.9 |
-| adaptec4 | 173.56 | 180.04 | +3.74% | 716/420 | 23.7/22.1 |
-| bigblue1 | 89.25 | 89.45 | +0.23% | 682/407 | 12.2/6.0 |
-| bigblue2 | 136.86 | 141.07 | +3.07% | 674/409 | 24.2/10.9 |
-| bigblue3 | 304.35 | 319.66 | +5.03% | 993/723 | 65.0/56.9 |
-| bigblue4 | 742.64 | 771.17 | +3.84% | 845/507 | 94.3/44.5 |
+如果直接把单元**均匀撒满版图**，初始密度就接近合法（overflow 低），
+优化器应当省去"从中心铺开"的全部功——预期迭代数显著减少；而若目标
+函数真的对初始化不敏感，最终 wHPWL 应当不变。本实验用最朴素的散开
+初始化检验这一预期，作为整个研究的基线问题。
 
-*uniform times have per-frame plotting overhead subtracted (its runs recorded
-snapshots); treat them as approximate.
+## 方法与实现
 
-Geomean HPWL delta: **+2.1% worse**. GP iterations: **-38% on average**.
+新增开关 `random_uniform_init_flag`（默认关）：可动单元的 x、y 在
+`[xl, xh−w]×[yl, yh−h]` 上独立均匀采样（`BasicPlace.py` 初始化分派中
+优先于中心初始化）。其余流程（调度、合法化、详细布局）完全不动。
+A/B 设置：ISPD2005 全部 8 个设计，确定性种子，与中心初始化同机对比，
+指标为最终 wHPWL 与全局布局迭代数。
 
-## Reading the curves (`curves_hpwl.png`, `curves_overflow.png`)
+## 结果
 
-- Uniform init starts with ~30-40x higher HPWL (cells scattered at random) but the
-  wirelength force collapses it within ~30 iterations to near the baseline level.
-- Overflow starts *low* (0.35-0.6 vs 1.0 — cells are already spread), spikes
-  briefly while the WL collapse re-clusters cells, then descends much earlier and
-  steeper than baseline: the long ~0.8 overflow plateau of center init is skipped
-  almost entirely, which is where the iteration savings come from.
-- The price: center init lets wirelength organize the *global* relative order of
-  cells while everything is still co-located and mobile; uniform init freezes
-  random relative order into the spread-out state, and later iterations never fully
-  recover it. The damage grows with design size/density: near-neutral on
-  adaptec1-3/bigblue1 (<=0.7%), +3-5% on adaptec4/bigblue2-4.
-- bigblue3 shows an overflow dip-and-rebound on both variants (divergence
-  recovery); uniform hits it earlier but with the same recovery mechanism.
+| 设计 | wHPWL 相对中心初始化 | 设计 | wHPWL 相对中心初始化 |
+|---|---|---|---|
+| adaptec1 | +0.58% | bigblue1 | +0.23% |
+| adaptec2 | −0.29% | bigblue2 | +3.07% |
+| adaptec3 | +0.74% | bigblue3 | +5.03% |
+| adaptec4 | +3.74% | bigblue4 | +3.84% |
 
-## Takeaway
+几何平均 **+2.10%**，全局布局迭代数 **−38%**。全部运行合法。
+（本实验不受后来发现的 conn-y 缺陷影响——均匀初始化正确地写入了 x 与 y；
+数字测于早期使用的另一块 GPU，跨机器绝对值有漂移，定性结论稳健。）
 
-Uniform init is a **speed/quality trade-off, not a free win**: ~1.4-2x faster GP
-with ~2% (up to 5%) worse HPWL, worsening with scale. Supports the ePlace-family
-folklore that center init matters for quality. Possible follow-ups: hybrid init
-(uniform within a center-biased envelope), net-cluster-aware seeding (place
-strongly connected components together, e.g. GiFt `gift_init_flag`), or an
-early-iteration gamma/density schedule tuned for the uniform start.
+## 反思
 
-## Files
+预期只对了一半：迭代确实大幅减少，但质量损失了 2%——**目标函数并不能
+替优化器抹平初始化的差异**。对失败模式的归因（详见
+`docs/INIT_SENSITIVITY_ANALYSIS.md`）：等尺寸单元互换不改变密度却改变
+线长，解空间存在指数多的"排列局部极小"；中心初始化的熔化阶段从对称态
+以近纯线长下降隐式解出了全局相对秩序，而均匀撒点把一个随机秩序直接
+冻进了铺开状态，梯度法此后无法完成长程互换。此外 λ 的初值按初始状态
+归一、γ 随 overflow 即时变化，两套调度都隐含"从聚拢态开始"的假设，
+散开起点会遭遇失配的调度轨迹。
 
-- `configs/` — the 8 run configs (uniform init + snapshot plotting)
-- `logs/` — full run logs (A-side logs live in `docs/logs/`)
-- `metrics.csv`, `metrics.md` — parsed A/B metrics (via `scripts/ab_report.py`)
-- `curves_hpwl.png`, `curves_overflow.png` — per-design A/B convergence overlays
-- `viz/<design>/slice01..10_iterNNNN.png` — 10 evolution snapshots per design
-  (baseline snapshots: `viz/<design>/` on branch `main`)
-
-## Reproduce
-
-```bash
-source env.sh && cd install
-for d in adaptec1 ... bigblue4; do
-  python dreamplace/Placer.py ../experiments/uniform_init/configs/$d.json
-done
-cd .. && python scripts/ab_report.py --b-logs experiments/uniform_init/logs --out experiments/uniform_init
-python scripts/select_viz_slices.py --src install/uniform_results --dst experiments/uniform_init/viz
-```
+由此确立了本研究此后所有实验的主线：**能否构造一个既携带良好秩序、
+又享受散开起点收益的初始化**。秩序一侧由实验 0b（连通性场）接续，
+散开收益一侧由实验 1（容量展开）接续。

@@ -1,82 +1,53 @@
-# 实验 5:GiFt 谱初始化 A/B(S2 判别)
+# 实验 5：GiFt 谱初始化 —— 全局谱解与局部松弛的对照
 
-> **⚠️ 对照污染标注(2026-08-26,conn-y 初始化 bug)**:本实验的 GiFt 与
-> center 两列数据**不受** conn-y bug 影响(GiFt 走 NonLinearPlace 变换
-> 路径,center 走原生分支)。但文中所有与"场族(conn/obsfield/shrink)"的
-> 对比与机制推论(剂量-响应、跌落瞬态、质心迁移谱)引用的场族数据来自
-> 意外变体("x=场、y=底边"),相关叙述待 dev_fix_conn_y 修复重跑后由 e0
-> 统一修订(E5/E6 撤销重写)。
+## 背景
 
+连通性场初始化（实验 0b）用阻尼 Jacobi 松弛求网表嵌入，本质是对一个
+二次型目标做**局部迭代**，32 次扫掠远未收敛到全局解。DREAMPlace 上游
+自带另一种初始化：GiFt（graph filter）谱初始化——用图滤波直接构造
+低频谱嵌入，可视作同一类二次目标的**全局解**。两者的对照能回答：场系
+初始化的残余损失，是"局部松弛欠收敛"造成的，还是二次型秩序本身的上限？
 
-分支延续 `dev_field_gate` 系列,承接 `docs/ADAPTEC4_DIAGNOSIS.md` 的 S2 判别:
-GiFt(ICCAD'24,仓库自带 `gift_init_flag`,graph-filter 谱嵌入)是二次目标的
-**全局解**,与 Jacobi 局部松弛(conn-grid 系)形成机制对照。判别逻辑:
-GiFt 也 +3.5% ⇒ 二次目标本身是错误来源;GiFt 修复 ⇒ Jacobi 欠收敛。
-每设计跑完自动记录最终可动质心(`scripts/movable_centroid.py`),检验
-E4/E5 的锚点拖拽与迁移机制预测。
+## 动机
 
-## 配置
+- 若 GiFt（全局解）显著优于 Jacobi 场，说明差距在松弛质量，加深/多级化
+  松弛即可改进；
+- 若 GiFt 同样受损甚至更差，说明二次型秩序有其内在极限，改进方向应
+  另寻（如几何、调度）。
+- 此外 GiFt 解天然考虑全局结构，预期能避开 Jacobi 场在宏密集设计上的
+  错侧问题（实验 2 的 H1）。
 
-center 默认配置 + `gift_init_flag: 1`(`gift_init_scale` 默认 0.7),
-单种子(4B 已证明种子极差 0.1-0.4pp,±0.5pp 以上声称安全),plot 间隔
-沿用 conn-grid 配置。center 基线复用 `experiments/obstacle_field/logs/center`
-(同机)。判别设计优先的运行顺序:a4 → a2 → b3 → a1 → 其余。
+## 方法与实现
 
-## 结果(相对本机 center 基线)
+直接使用上游开关 `gift_init_flag=1`（`gift_init_scale=0.7` 默认值），
+不改任何代码；ISPD2005 全部 8 个设计与中心初始化同机 A/B，另测量各
+设计最终布局的可动单元质心（`scripts/movable_centroid.py`），用于与
+固定引脚锚质量的几何关系对照。
 
-| 设计 | center | gift wHPWL | delta | GP iters (C/G) | 最终质心 dy(%h) |
+**本实验数据不受 conn-y 缺陷影响**（GiFt 走独立的初始化路径，y 正确），
+是缺陷勘正前后都有效的少数完整数据集之一。
+
+## 结果
+
+| 设计 | wHPWL | 迭代 | 设计 | wHPWL | 迭代 |
 |---|---|---|---|---|---|
-| adaptec1 | 72.81 | 73.17 | +0.50% | 611/421 | +1.8 |
-| adaptec2 | 81.96 | 81.50 | **−0.56%** | 640/426 | −1.9 |
-| adaptec3 | 193.05 | 194.20 | +0.59% | 679/451 | −4.7 |
-| adaptec4 | 173.62 | 177.89 | **+2.46%** | 715/471 | **+3.4** |
-| bigblue1 | 89.26 | 89.56 | +0.33% | 677/448 | +6.0 |
-| bigblue2 | 136.92 | 141.23 | +3.15% | 664/469 | +1.7 |
-| bigblue3 | 304.23 | 319.85 | +5.14% | 995/956 | +2.8 |
-| bigblue4 | 742.60 | 768.00 | +3.42% | 846/563 | −5.0 |
+| adaptec1 | +0.50% | −31% | bigblue1 | +0.33% | −34% |
+| adaptec2 | **−0.56%** | −33% | bigblue2 | +3.15% | −29% |
+| adaptec3 | +0.59% | −33% | bigblue3 | +5.14% | −4% |
+| adaptec4 | +2.46% | −34% | bigblue4 | +3.42% | −33% |
 
-geomean **+1.86%**(conn-grid +0.95%,obsfield +0.79%,uniform +2.10%);
-GP 迭代 −25~−34%(bigblue3 除外)。全部合法。
+几何平均 +1.86%，迭代节省 25–34%。adaptec2 上 GiFt **反超中心初始化**
+（−0.56%），是本项目首个在宏密集设计上胜过默认初始化的干净数据点。
 
-## 发现
+## 反思
 
-- **S2 判别结果:分级中间态,两个假设都不完整。** adaptec4 上 GiFt +2.46%,
-  介于场族(+3.1~3.6%)与 center(0)之间;最终质心 +3.4% h,恰为场族
-  (~0%)与 melt(+6.5%)之半。二次目标本身贡献了部分差距(其全局解仍
-  劣 2.46%),但不是全部——序质量呈**连续谱**:熔化序 > 谱序 > Jacobi
-  局部序,携带的定向迁移力同序。
-- **e0 的帧轨迹分析**(用本实验 plot 帧,方法同 E5b;详见
-  `docs/ADAPTEC4_DIAGNOSIS.md`):GiFt 的 WL 塌缩瞬态几乎消失(dy 最低
-  −0.5%,对比 Jacobi 场族 −27~−29%、center −3.7%),爬坡段迁移完成约一半
-  (−0.5→+3.0,center 为 0→+5.5)。三族剂量-响应:跌落幅度与后续钉死
-  强相关——跌落大小本身可能就是序质量的症状(坏序=长网=远距拉拽=大跌落
-  =途中重冻),(a) 序内容与 (b) 轨迹历史并非二选一。实验 6(conn-shrink)
-  仍是干净判别。
-- **adaptec2 里程碑:GiFt −0.56% 反超 center,且省 33% 迭代。** a2 全排序:
-  obsspread −0.81% < GiFt −0.56% < obsfield +0.49% < center 0 <
-  conn-grid +2.04%——"胜过 center"在 a2 上已有两例(两条独立路线:容量
-  展开与谱嵌入),GiFt 的独特价值是同时给出迭代节省与机制判别地位;
-  谱嵌入天然绕开 Jacobi 场的宏障碍错侧问题,与实验 2(obsfield 修复
-  adaptec2)互为 D2 的独立铁证。
-- **失败侧同样有信息**:bigblue2 +3.15%(conn-grid 仅 +0.85%)与 bigblue3
-  +5.14%(conn-grid +1.15%)说明谱全局解在部分净表上排序**劣于** Jacobi
-  局部松弛——GiFt 与 conn-grid 的每设计胜负交错(a2/a4 GiFt 优,
-  b2/b3/b4-quality conn-grid 优),没有一致的支配关系;初始化质量是
-  设计依赖的,提示 per-design 选择或混合(谱做全局、Jacobi 做局部精修)
-  是下一层机会。
-- 质心侧记:bigblue1 的 GiFt 质心 +6.0%(完整 melt 式上迁)且仅 +0.33%;
-  bigblue4 −5.0% 且 +3.42%——"完成上迁 ⇔ 小劣势"的相关性在 8 设计上
-  继续成立(a3 是温和例外:−4.7% 但仅 +0.59%,其固定锚质心本就偏上,
-  方向意义与 a4 相反,与 E4 的锚几何逐设计符号预测一致)。
-
-## 复现
-
-```bash
-experiments/gift_init/run_all.sh   # flock gpu0.lock,判别设计优先,可断点续跑
-python scripts/ab_report.py --a-logs experiments/obstacle_field/logs/center \
-  --variant "gift=experiments/gift_init/logs" --out experiments/gift_init
-python scripts/select_viz_slices.py --src install/gift_results --dst experiments/gift_init/viz
-python scripts/make_montage.py experiments/gift_init/viz
-```
-
-迭代过程:`viz/<design>_all.png`;最终质心:`logs/centroids.txt`。
+- **谱全局解与 Jacobi 局部松弛互不支配**：GiFt 在 adaptec2 大胜（谱嵌入
+  天然绕开错侧）、在 adaptec4 优于当时的场系；但在 bigblue2 / bigblue3
+  明显更差——对高度聚簇的网表，全局解把整体铺得过散，局部松弛反而
+  保住了簇内紧凑性。与修复后的连通性场（实验 R：几何平均 +0.40%）相比，
+  GiFt 整体已不占优，但 adaptec2 的 −0.56% 仍是该设计的最好成绩之一。
+- **迭代节省与展开系同量级**（约 −30%），来源相同：低 overflow 起点。
+  GiFt 因此归入"速度端"变体，与 obsspread 竞争速度-质量折中。
+- 二次型秩序的"内在极限"问题最终由实验 6 回答：保序收缩证明 Jacobi 场
+  秩序配上正确几何即可与中心初始化打平——瓶颈不在秩序质量，而在
+  几何与调度的匹配。

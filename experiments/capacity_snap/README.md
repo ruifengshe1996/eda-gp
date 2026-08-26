@@ -1,68 +1,66 @@
-# Experiment 1: capacity-constrained spreading of connectivity seeds
+# 实验 1：容量展开 —— 组合秩序与低溢出起点
 
-Branch `dev_capacity_snap`, direction D3 of `docs/INIT_SENSITIVITY_ANALYSIS.md`:
-compose conn-grid's *order* with uniform's *low-overflow spread*.
+## 背景
 
-## Method (`conn_capacity_spread_flag`)
+本项目研究 DREAMPlace 全局布局的初始化：默认的中心初始化靠熔化阶段
+隐式求秩序、质量最好；均匀散开初始化（实验 0a）省 38% 迭代但因随机
+秩序损失 2.1% wHPWL；连通性场初始化（实验 0b）用网表的 Jacobi 调和场
+预制秩序，把损失大幅压缩。但场解本身聚成致密的团，吸附后初始 overflow
+仍然很高——迭代节省的来源（低溢出起点）在场初始化中丢失了。
 
-Between the connectivity field and the anchor snap, run a **capacity-clipped,
-geometry-respecting recursive bisection**: cuts sit at the area-weighted median
-coordinate of the cells (following the field); cells cross a cut only when one
-side would exceed `conn_spread_density_slack (1.5) x average fill` of its free
-capacity (free = lattice anchors outside fixed-node bboxes, via a prefix-sum
-raster). Leaves clip cells into their rect; a global nearest-feasible-anchor
-snap finishes. Movable macros (height > 1.5 rows) keep their field positions —
-spreading reorders them too aggressively (bigblue3, 2480 movable macros).
-Where capacity never binds the method reduces to conn-grid.
+## 动机
 
-Two earlier iterations are documented here for the record: (a) free-area-
-proportional bisection with leaf round-robin scatter — destroyed sparse-region
-order (bigblue4 +7.9%); (b) geometry-respecting cuts fixed that (+3.4%);
-macro exclusion was needed for bigblue3 but is not sufficient (see below).
+秩序与铺开这两种收益来自不同机制，原则上可以叠加：把连通性场的**相对
+秩序保持不变**，同时把单元**在容量允许范围内摊开**，得到一个"既有序
+又接近合法密度"的起点。预期同时拿到接近场初始化的质量与接近均匀初始化
+的迭代节省。
 
-## Results (vs. center baseline; uniform/conn-grid columns for reference)
+## 方法
 
-| Design | center | uniform d | conn-grid d | **cap-spread d** | GP iters (C/U/G/S) |
-|---|---|---|---|---|---|
-| adaptec1 | 72.79 | +0.58% | +0.08% | **-0.08%** | 611/381/611/473 |
-| adaptec2 | 81.89 | -0.29% | +2.11% | **-0.79%** | 646/396/626/558 |
-| adaptec3 | 193.02 | +0.74% | +0.03% | +1.16% | 679/412/657/564 |
-| adaptec4 | 173.56 | +3.74% | +3.55% | +3.23% | 716/420/677/565 |
-| bigblue1 | 89.25 | +0.23% | -0.14% | +0.22% | 682/407/688/518 |
-| bigblue2 | 136.86 | +3.07% | +0.84% | **+0.39%** | 674/409/623/571 |
-| bigblue3 | 304.35 | +5.03% | +1.16% | **+20.74%** | 993/723/1017/872 |
-| bigblue4 | 742.64 | +3.84% | +0.03% | +3.42% | 845/507/804/708 |
+在场与格点吸附之间插入一步**容量受限、respect 几何的递归二分**：
 
-Geomean: +3.34% (bigblue3 dominates; excluding it: ~+1.0%). All runs legal.
+- 沿较长轴在单元的**面积加权中位数坐标**处设置切割线（切割跟随场的
+  几何，而非机械均分）；
+- 单元只有当某一侧超出其自由容量的 `slack × 平均填充率`（slack=1.5）时
+  才被移过切割线——容量从不吃紧的区域完全退化为普通吸附，秩序零扰动；
+- 自由容量 = 扣除固定单元覆盖后的格点锚数，用二维前缀和 O(1) 查询；
+- 叶子（≤16 单元或几何最小）把单元裁剪进所属矩形，最后统一做最近
+  可行锚点吸附；
+- 可动宏（高度 > 1.5 行高）不参与展开、保持场位置——展开会过度重排宏。
 
-## Findings
+## 实现
 
-- The order+spread composition works on regular standard-cell designs:
-  adaptec1/2 now **beat the baseline** (-0.08%/-0.79%) with 13-23% fewer GP
-  iterations — the first strategy to win on quality anywhere while saving
-  iterations everywhere (-13..-24%).
-- **bigblue3 is a hard counterexample** (+20.7%): its connectivity field is one
-  extremely dense clump, so *any* capacity bound (slack 1.5 or 3.0 tested)
-  stretches the whole netlist (init HPWL 2.3e9 vs 0.56e9 for conn-grid), and
-  the optimizer converges quickly into a poor basin (overflow 0.07 at iter 600
-  with HPWL stuck ~15% high, then divergence-recovery). This design *needs*
-  the melt phase; macro exclusion alone does not save it.
-- bigblue4 (+3.42%) sits between: spreading trades its conn-grid quality
-  (+0.03%) for iteration savings (804 -> 708).
-- Interpretation: spreading pays where the field is locally clumped (declump =
-  low overflow head start); it hurts where the field is *globally* collapsed,
-  because bounded-density projection of a point-like field is
-  order-destroying at long range. A field-quality gate (e.g. spread only if
-  field spans > x% of the layout, or per-region partial spreading) is the
-  obvious follow-up; the obstacle-aware field (experiment 2) may also
-  de-collapse such fields at the source.
+`ConnectivityGridInit.py` 的 `_capacity_spread`；开关
+`conn_capacity_spread_flag`（默认关），参数 `conn_spread_leaf_size`（16）、
+`conn_spread_density_slack`（1.5）。开发中淘汰过两版设计：按自由面积
+均分切割 + 叶内轮转散布会摧毁稀疏区秩序（bigblue4 +7.9%），改为跟随
+场几何的中位数切割后消除。
 
-## Reproduce
+## 结果
 
-```bash
-source env.sh && cd install
-for d in adaptec1 ... bigblue4; do python dreamplace/Placer.py ../experiments/capacity_snap/configs/$d.json; done
-cd .. && python scripts/ab_report.py --variant "uniform=experiments/uniform_init/logs" \
-  --variant "conn-grid=experiments/conn_grid_init/logs" \
-  --variant "cap-spread=experiments/capacity_snap/logs" --out experiments/capacity_snap
-```
+**数据有效性**：本实验的 GPU 运行受 conn-y 缺陷影响（y 被覆盖为底行
+直线），实测为意外变体。该变体成绩：几何平均 +3.34%，其中 bigblue3
+灾难性 +20.7%（其场坍缩为一个点状团，任何容量约束都会把整个网表拉长），
+而 adaptec1 / adaptec2 首次反超中心初始化且各设计节省 13–24% 迭代——
+这组数字当时确立了"展开对坍缩场有害"的问题意识。
+
+**修复后**：容量展开未单独重跑，其修复后语义由实验 R 中的 obsspread
+变体（连通性场 + 障碍投影 + 容量展开）代表：几何平均 +1.82%，迭代节省
+扩大到 **18–34%**，bigblue3 的伤害腰斩至 +9.27% 但依然存在，其余设计
+代价不超过 +1.4%。
+
+## 反思
+
+三条结论穿越了数据勘正存活下来：
+
+1. **迭代节省是真实且巨大的**（−30% 量级），来源正是低 overflow 起点，
+   与实验 0a 的观察一致；
+2. **对坍缩场做有界密度投影会破坏长程秩序**：bigblue3 的场收缩为
+   单一致密团，摊开它必然把强连通的单元拉散到全版图，这种伤害在修复后
+   仍有 +9.27%——它是本项目确认的少数真实机制之一；
+3. 能否**预先判断**哪个设计会受害？这个问题在实验 4 中被系统检验并得到
+   否定答案（不存在可用的廉价静态判据），最终以竞速门（两候选各跑到
+   overflow ≤ 0.4 再择优）收束。
+
+质量与速度的取舍此后成为主轴：质量端由实验 6 的保序收缩胜出，速度端
+由本方向的展开系变体占据。
