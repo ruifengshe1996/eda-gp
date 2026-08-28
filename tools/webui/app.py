@@ -170,6 +170,24 @@ def exp_first_commit_ts(name):
     return data[name]
 
 
+def has_errata_banner(readme):
+    """True only when the README carries an errata/pollution BANNER of its own.
+
+    By convention the banner is a blockquote near the top of the file. Matching
+    the bare word anywhere in the body produced false positives on experiments
+    that merely *issue* an erratum against another document (e.g. lambda_ramp
+    correcting C5 in MECHANISM_ANALYSIS), which reads as "this experiment's data
+    is suspect" — the opposite of the truth.
+    """
+    if not readme:
+        return False
+    for line in readme.splitlines()[:15]:
+        s = line.strip()
+        if s.startswith(">") and ("勘误" in s or "污染" in s):
+            return True
+    return False
+
+
 def list_experiments():
     exps = []
     if not os.path.isdir(EXP_DIR):
@@ -194,7 +212,7 @@ def list_experiments():
             "name": name,
             "title": title or name,
             "summary": para,
-            "errata": bool(readme and "勘误" in readme),
+            "errata": has_errata_banner(readme),
             "geomean": find_geomean(d),
             "has_metrics": os.path.isfile(os.path.join(d, "metrics.md")),
             "has_csv": os.path.isfile(os.path.join(d, "metrics.csv")),
