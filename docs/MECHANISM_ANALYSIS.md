@@ -90,6 +90,22 @@ bigblue3 的 ~1000 迭代（其余设计 ~600）大半耗在这类循环里；�
 的教训（单调 γ 包络令 bigblue3 +4.94%）证明回松通道是承重的——
 问题不在回松，而在控制器没有阻尼、注定要反复触发它。
 
+> **勘误（实验 11，2026-08-28）**：上段末尾关于 bigblue3 的归因**错误，
+> 予以撤回**。查同机 center 基线 `experiments/obstacle_field/logs/center/
+> bigblue3_run.log`：第 728 迭代 overflow 已降到 6.85e-2 < stop_overflow，
+> 紧接着的日志行是 `iteration 729, ( 0, 0, 0)`，DensityWeight 归零、
+> gamma 跳到 1.08e3——这是 `NonLinearPlace.py:73` 检出可动单元中含宏
+> （`macro_place_flag='auto'`，日志 "movable macros detected"）后把
+> `global_place_stages[0]` **复制了一份**，bigblue3 因此走**两段式布局**：
+> 宏布局段 728 迭代 + 标准段 267 迭代。这与 λ 的振荡无关，bigblue3 的
+> 迭代数也因此不能作为「发散-恢复循环」的证据。
+>
+> C5 的其余部分（λ 更新律无目标轨迹、无阻尼）仍然成立，但实验 11 的
+> 测量把它的性质说得更准：λ 在全部 8 个设计上都只是**近乎开环的指数
+> 斜坡**（adaptec1 的 611 次更新里仅 13 次下降），跨越恒定的 9.8~10.5
+> 个十进制位；反馈通道几乎从不触发，所以「振荡」并不是主要现象，
+> **迭代数由斜坡率单独决定**才是。详见 `experiments/lambda_ramp/README.md` §2。
+
 ## 第二部分：新方向（N 系列）
 
 原则：不做既有实验的延长线（不是"再加变体/再扫参数/再加组"），而是

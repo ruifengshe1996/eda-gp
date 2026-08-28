@@ -164,6 +164,10 @@
     "description" : "if > 0, set the initial density weight to this absolute value instead of normalizing by the t=0 gradient ratio (N1 schedule state-alignment; look the value up from a reference trajectory at the init overflow)",
     "default" : 0.0
     },
+"density_weight_ramp_scale" : {
+    "description" : "exponent applied to the multiplicative density-weight (lambda) update factor: lambda *= mu**scale. 1.0 reproduces the RePlAce default ramp; >1 traverses the same lambda decades in fewer iterations (N5 ramp-rate knob)",
+    "default" : 1.0
+    },
 "plot_iteration_interval" : {
     "description" : "plot every N global placement iterations when plot_flag is set",
     "default" : 100

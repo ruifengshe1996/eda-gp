@@ -45,6 +45,9 @@
 | 调度状态对齐 | schedule state-alignment | 按初始 overflow 查参考轨迹取 γ/λ 入口值（N1 提案） |
 | 逆密度播种 | inverse-density filler seeding | 按初始密度图的补集采样播种 filler（N2 提案） |
 | 长程重排算子 | long-range reassignment operator | 中溢出里程碑处的粗 bin 成组指派交换（N3 提案） |
+| λ 斜坡率 | lambda ramp rate (`density_weight_ramp_scale`) | 对 λ 乘性更新因子取的幂：λ *= μ^s；s=1 为 RePlAce 缺省，s>1 用更少迭代跨越同样的 λ 十进制跨度（实验 11） |
+| 迭代数混杂 | iteration-count confound | 各初始化变体的 wHPWL 差异与其迭代数差异高度共线（r=−0.967），需固定初始化的斜坡率曲线才能分离（实验 11） |
+| 两段式布局 | two-stage placement | 检出可动宏时 `macro_place_flag` 自动复制 stage 0，ISPD2005 中仅 bigblue3 触发；其 ~1000 迭代由此而来，非发散恢复 |
 
 ## 2. 实验编号（目录名 — 内容一句话）
 
@@ -62,6 +65,7 @@
 | 实验 R | `experiments/conn_rebuild` | conn-y 缺陷修复后 conn 系全量重跑（33 运行），修复后权威数据 | 干净 |
 | 实验 8（计划） | — | ISPD2015 盲测（全量、路由预注册、零调参） | — |
 | 实验 9（计划） | — | 熔化点位置对照（注册预测：adaptec3 底边点熔化应胜修复版连通性场初始化） | — |
+| 实验 11 | `experiments/lambda_ramp` | center 初始化 × λ 斜坡率（s=0.70/1.43/2.00），分离迭代数混杂的对照实验 | 预注册，运行中 |
 | 实验 10 | `experiments/align_filler` | N1 调度状态对齐 × N2 逆密度 filler 播种的 2×2 消融，基座 obsspread（(off,off) 臂复用实验 R） | 干净 |
 
 ## 3. 编号系列（均出自 `docs/` 分析文档）
@@ -75,7 +79,7 @@
 | S1–S3 | ADAPTEC4_DIAGNOSIS | 后续实验计划（S1 多种子方差；S2 GiFt 判别；S3 场+重熔）；S1 已并入实验 3/4，S2 即实验 5 |
 | P0–P4 | RESULTS_SUMMARY | 修复后下一步优先级（P0 收缩邻域深挖；P1 调度×初始化联合重检；P2 ISPD2015 盲测；P3 bigblue3 展开修复；P4 stop_overflow 稳健性） |
 | C1–C5 | MECHANISM_ANALYSIS | 劣化机制论证链（C1 λ₀ 归一化强制重演熔化；C2 γ 瞬时映射过锐；C3 长程错误无修复通道；C4 场系残余损失的两个来源；C5 λ 更新律无阻尼振荡） |
-| N1–N6 | MECHANISM_ANALYSIS | 新机制方向（N1 调度状态对齐——**实验 10 证伪**；N2 逆密度 filler 播种——**实验 10 证伪**；N3 中途长程重排算子；N4 γ 空间局部化；N5 λ 目标轨迹控制器；N6 单步位移信赖域） |
+| N1–N6 | MECHANISM_ANALYSIS | 新机制方向（N1 调度状态对齐——**实验 10 证伪**；N2 逆密度 filler 播种——**实验 10 证伪**；N3 中途长程重排算子；N4 γ 空间局部化；N5 λ 目标轨迹控制器——**实验 11 先做其前置对照**；N6 单步位移信赖域） |
 
 ## 4. 写作规范
 

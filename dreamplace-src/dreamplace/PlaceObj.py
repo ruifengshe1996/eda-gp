@@ -863,6 +863,12 @@ class PlaceObj(nn.Module):
                     mu = UPPER_PCOF * torch.pow(
                         UPPER_PCOF, -delta_hpwl / ref_hpwl).clamp(
                             min=LOWER_PCOF, max=UPPER_PCOF)
+                # optional ramp-rate knob: lambda traverses the same ~10 decades
+                # in 1/scale as many iterations, keeping the controller's sign
+                # behaviour and relative modulation intact (N5)
+                ramp_scale = float(getattr(self.params, "density_weight_ramp_scale", 1.0))
+                if ramp_scale != 1.0:
+                    mu = mu ** ramp_scale
                 self.density_weight *= mu
 
         def update_density_weight_op_overflow(cur_metric, prev_metric, iteration):
