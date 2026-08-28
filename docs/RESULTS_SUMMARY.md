@@ -25,6 +25,7 @@ center（中心堆叠 + WL 熔化）更聪明的初始化改进 wHPWL / overflow
 | 勘误+重跑 | dev_fix_conn_y | bug 修复 + 33 运行重跑 | 本文主数据 |
 | 10 align-filler | main | N1 调度状态对齐 + N2 逆密度 filler 播种 | 干净，双双证伪 |
 | **11 λ 斜坡** | **dev_lambda_ramp** | **固定 center，只扫 λ 斜坡率：迭代数混杂对照** | **干净，见 §3.5/§5** |
+| **12 λ 入口** | **dev_lambda_ramp** | **center 几何 + obsspread 的 λ₀：把标量与几何解耦** | **干净，见 §3.6** |
 
 ## 2. conn-y bug（贯穿实验 0b–7 的勘误）
 
@@ -101,6 +102,36 @@ obsspread/GiFt）。
 残差」，或直接落在 `experiments/lambda_ramp/viz/frontier.png` 的前沿图上。
 `experiments/lambda_ramp/analyze.py` 已将该口径工具化。
 
+## 3.6 密度侧：初始化的效应就是一个标量（实验 12 + overflow 专题）
+
+`docs/OVERFLOW_ANALYSIS.md` 只看 overflow、不看 wHPWL，给出并验证了一条
+完整机制链：
+
+- 最终 overflow 被 `stop_overflow=0.07` 钳住（全变体 0.066~0.068），密度侧
+  收益只能表现为迭代数；
+- 初始化交付的低 overflow 在**第 75~100 迭代被完全抹除**：六种初始化
+  （起点跨度 0.42~1.00）收敛到同一个**设计常数吸引子**（0.72~0.86）；
+- 原因是前 ~100 迭代密度力占比 <1%，早期 overflow 是**线长目标的读数**；
+  γ 的瞬时映射还构成正反馈（obsspread 在第 1 迭代拿到锐 11 倍的线长模型）；
+- 幸存的只有 λ₀ 一个标量，而 λ_F 与初始化无关，故
+  `迭代数 = log(λ_F/λ₀)/log μ`。
+
+**实验 12（`experiments/lambda_entry/`）做了干预式验证**：保持 center 几何
+不变、只把 λ₀ 设成该设计 obsspread 的实测值（502~1368×），迭代节省
+−26.9% vs obsspread 的 −30.1%（相对差 4.5%，E1 成立）。**铺开几何对密度侧
+收敛的贡献在测量精度内为零。**
+
+由此得到速度模式三个杠杆的完整排序（约 −26% 迭代）：
+
+| 杠杆 | 迭代 | wHPWL |
+|---|---|---|
+| 斜坡**速率** `density_weight_ramp_scale=1.43` | −25.4% | **+0.53%** |
+| λ₀ **入口** `initial_density_weight_absolute` | −26.9% | +1.34% |
+| 铺开**几何** obsspread | −30.1% | +1.82% |
+
+**越是间接地去动 λ 调度，代价越高。** 附带拆开了 bigblue3 的灾难：
++9.27% 里约 6.4pp 归几何（单用 λ₀ 只剩 +2.87%），约 2.9pp 归迭代数本身。
+
 ## 4. 机制结论清单（幸存 / 被证伪）
 
 **幸存（修复后数据支持）**：
@@ -144,6 +175,7 @@ obsspread/GiFt）。
 | `random_center_init_flag` | center 基线（DREAMPlace 原默认） | — |
 | `initial_density_weight_absolute` / `filler_init_density_aware_flag` | N1 调度状态对齐 / N2 逆密度 filler 播种（均已证伪） | 10 |
 | **`density_weight_ramp_scale`** | **λ 乘性更新取幂 μ^s：迭代数的直接旋钮** | **11** |
+| `initial_density_weight_absolute` | 直接指定 λ₀（跳过梯度比归一化）；实验 12 用它复现铺开系的迭代节省 | 10/12 |
 
 推荐配置（**已按实验 11 改写**，旧推荐见本节末的撤回说明）：
 
@@ -159,7 +191,7 @@ obsspread/GiFt）。
 > 质量优先用 shrink001」的推荐由实验 11 证伪——前者在同等迭代节省下
 > 比 λ 斜坡贵 3.4 倍，后者的优势全部来自迭代数混杂。
 
-## 6. 下一步方向（按实验 11 重排，2026-08-28）
+## 6. 下一步方向（按实验 11/12 重排，2026-08-28）
 
 实验 11 之后，"更聪明的初始化"这条主线的可用空间大幅收窄：三个变体的
 去混杂效应为零，两个为负，只剩三个设计上的局部正效应。优先级相应改写。
@@ -174,9 +206,11 @@ s>1.43 后急剧变陡。值得补测 s=1.2 / 1.6 / 1.8 把拐点定位清楚，
 **Q1 — 幸存正效应的机制（研究线唯一的立足点）**
 为什么 obsspread 在 adaptec3（−1.04pp）、bigblue1（−0.40pp），GiFt 在
 adaptec2（−0.96pp）、adaptec3（−0.62pp）能拿到真实增益，而 obsspread
-在 bigblue3 是 +8.12pp？这是 n=8 上 3 个正例的逐设计问题。先做逐设计
-的「残差 vs 网表统计量」对照（已有 `scripts/spread_gate_probe.py` 等
-CPU 探针），不急于上 GPU。
+在 bigblue3 是 +8.12pp？实验 12 又补了两个反向样本：bigblue4 与 adaptec4
+上**几何是有益的**（obsspread +1.26%/+1.40% 优于单用 λ₀ 的 +3.75%/+1.87%）。
+这批正反例就是「几何究竟在什么条件下有用」的全部样本。零 GPU 成本的
+第一步：检验 **overflow 吸引子值**（`docs/OVERFLOW_ANALYSIS.md` §2，
+纯由网表决定、此前从未提取）是否能分开它们。
 
 **Q2 — stop_overflow 与迭代预算的合流（原 P4，优先级上升）**
 前沿的存在说明 stop_overflow=0.07 处的 wHPWL 是"某个未声明迭代预算下
@@ -189,11 +223,18 @@ CPU 探针），不急于上 GPU。
 （s=1.43 在 mgc 系列上是否仍以 ~1/3 的代价买到 ~25% 迭代），副轴 =
 Q1 的三个正效应设计是否有 ISPD2015 对应物。
 
-**Q4 — N3/N4/N6（机制侧仍未被触碰的方向）**
-N3 中途长程重排（唯一能修 bigblue3 型长程错误的机制）、N4 逐网线 γ、
-N6 单步位移信赖域。三者都与初始化正交，且不受本次混杂影响。N5 的原
-动机（消除 λ 振荡）已被实验 11 证伪（λ 几乎不振荡），若重提应改为
-"给定迭代预算 T 自动定斜坡"的工程定位。
+**Q4 — N4 升为机制侧首选；N3/N6 次之**
+实验 12 的 E4 表明：λ₀ 抬高 800 倍仍打不破 overflow 吸引子，**在密度项
+加权重这条路走不通**。既然早期 overflow 是线长目标的读数，唯一能改变它的
+杠杆就是改线长目标——即 **N4 逐网线 γ**。它因此从"普惠改进"升级为
+overflow 侧唯一有理论依据的方向，可证伪预测已写在
+`docs/OVERFLOW_ANALYSIS.md` §7A（局部 γ 下 obsspread 的回弹显著减小、
+第 100 迭代的跨变体 overflow 不再收敛到同一值）。
+N3 中途长程重排、N6 信赖域仍然有效但排后。N5 的原动机（消除 λ 振荡）
+已被实验 11 证伪（λ 几乎不振荡），若重提应改为"给定迭代预算 T 自动定
+斜坡"的工程定位。另新增 **Q5：把「维持」与「压缩」分开**——对已满足
+密度约束的 bin 显式处理非活跃集（见 `OVERFLOW_ANALYSIS` §7E），是唯一
+能让初始化交付的合法性具有持久性的做法。
 
 **已降级**：原 P0（shrink 邻域深挖）——shrink 的效应为零，扫它的参数
 空间没有意义；原 P1（为低 overflow 起步重设计 λ₀/γ 入口）——实验 10
@@ -202,6 +243,8 @@ N6 单步位移信赖域。三者都与初始化正交，且不受本次混杂�
 ## 7. 数据与可视化索引
 
 - 修复版主数据：`experiments/conn_rebuild/`（logs / metrics / 32 张 montage）
+- **overflow 专题：`docs/OVERFLOW_ANALYSIS.md` + `scripts/overflow_anatomy.py`**
+- **λ 入口对照：`experiments/lambda_entry/`（8 运行 + analyze.py）**
 - **去混杂前沿与残差：`experiments/lambda_ramp/`（24 运行 + `analyze.py` + `viz/frontier.png`）**
 - 修复版路由表：`experiments/combiner/routing_table.md`
 - 意外变体存档：各 `experiments/<name>/`（README 带污染横幅）+

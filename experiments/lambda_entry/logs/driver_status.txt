@@ -1,0 +1,17 @@
+adaptec1 start gpu=4 18:02:28
+adaptec1 exit=0 18:03:30
+adaptec2 start gpu=6 18:03:30
+adaptec2 exit=0 18:04:27
+adaptec3 start gpu=6 18:04:28
+adaptec3 exit=0 18:06:40
+adaptec4 start gpu=0 18:06:40
+adaptec4 exit=0 18:09:32
+bigblue1 start gpu=0 18:09:33
+bigblue1 exit=0 18:10:59
+bigblue2 start gpu=0 18:10:59
+bigblue2 exit=0 18:13:14
+bigblue3 start gpu=0 18:13:14
+bigblue3 exit=0 18:19:27
+bigblue4 start gpu=0 18:19:28
+bigblue4 exit=0 18:26:31
+ALL_DONE
