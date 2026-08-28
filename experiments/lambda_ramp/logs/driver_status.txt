@@ -1,0 +1,51 @@
+s143/adaptec1 start gpu=5 12:02:30
+s143/adaptec1 exit=0 12:03:12
+s143/adaptec2 start gpu=5 12:03:12
+s143/adaptec2 exit=0 12:04:12
+s143/adaptec3 start gpu=5 12:04:12
+s143/adaptec3 exit=0 12:05:58
+s143/adaptec4 start gpu=5 12:05:58
+s143/adaptec4 exit=0 12:08:30
+s143/bigblue1 start gpu=5 12:08:30
+s143/bigblue1 exit=0 12:09:35
+s143/bigblue2 start gpu=5 12:09:36
+s143/bigblue2 exit=0 12:11:50
+s143/bigblue3 start gpu=5 12:11:50
+s143/bigblue3 exit=0 12:15:48
+s143/bigblue4 start gpu=5 12:15:49
+s143/bigblue4 exit=0 12:23:26
+ARM_s143_DONE
+s070/adaptec1 start gpu=5 12:23:26
+s070/adaptec1 exit=0 12:24:35
+s070/adaptec2 start gpu=5 12:24:36
+s070/adaptec2 exit=0 12:25:55
+s070/adaptec3 start gpu=5 12:25:55
+s070/adaptec3 exit=0 12:28:41
+s070/adaptec4 start gpu=5 12:28:41
+s070/adaptec4 exit=0 12:32:12
+s070/bigblue1 start gpu=5 12:32:13
+s070/bigblue1 exit=0 12:33:29
+s070/bigblue2 start gpu=5 12:33:29
+s070/bigblue2 exit=0 12:36:28
+s070/bigblue3 start gpu=5 12:36:28
+s070/bigblue3 exit=0 12:41:56
+s070/bigblue4 start gpu=5 12:41:56
+s070/bigblue4 exit=0 12:52:23
+ARM_s070_DONE
+s200/adaptec1 skip (done)
+s200/adaptec2 start gpu=5 12:52:23
+s200/adaptec2 exit=0 12:53:09
+s200/adaptec3 start gpu=5 12:53:09
+s200/adaptec3 exit=0 12:54:32
+s200/adaptec4 start gpu=5 12:54:33
+s200/adaptec4 exit=0 12:56:20
+s200/bigblue1 start gpu=5 12:56:21
+s200/bigblue1 exit=0 12:57:10
+s200/bigblue2 start gpu=5 12:57:10
+s200/bigblue2 exit=0 12:58:43
+s200/bigblue3 start gpu=5 12:58:43
+s200/bigblue3 exit=0 13:01:49
+s200/bigblue4 start gpu=5 13:01:49
+s200/bigblue4 exit=0 13:07:27
+ARM_s200_DONE
+ALL_DONE
