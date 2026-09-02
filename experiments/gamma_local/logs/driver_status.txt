@@ -33,3 +33,56 @@ gpos/bigblue4 start gpu=4 12:46:16
 gpos/bigblue4 exit=0 12:56:07
 ARM_gpos_DONE
 ALL_DONE
+gneg/adaptec1 skip (done)
+gneg/adaptec2 skip (done)
+gneg/adaptec3 skip (done)
+gneg/adaptec4 skip (done)
+gneg/bigblue1 skip (done)
+gneg/bigblue2 skip (done)
+gneg/bigblue3 skip (done)
+gneg/bigblue4 skip (done)
+ARM_gneg_DONE
+gpos/adaptec1 skip (done)
+gpos/adaptec2 skip (done)
+gpos/adaptec3 skip (done)
+gpos/adaptec4 skip (done)
+gpos/bigblue1 skip (done)
+gpos/bigblue2 skip (done)
+gpos/bigblue3 skip (done)
+gpos/bigblue4 skip (done)
+ARM_gpos_DONE
+nneg/adaptec1 start gpu=4 12:59:25
+nneg/adaptec1 exit=0 13:00:14
+nneg/adaptec2 start gpu=4 13:00:15
+nneg/adaptec2 exit=0 13:01:22
+nneg/adaptec3 start gpu=4 13:01:22
+nneg/adaptec3 exit=0 13:03:43
+nneg/adaptec4 start gpu=4 13:03:43
+nneg/adaptec4 exit=0 13:06:46
+nneg/bigblue1 start gpu=4 13:06:46
+nneg/bigblue1 exit=0 13:07:57
+nneg/bigblue2 start gpu=4 13:07:57
+nneg/bigblue2 exit=0 13:10:22
+nneg/bigblue3 start gpu=4 13:10:22
+nneg/bigblue3 exit=0 13:15:54
+nneg/bigblue4 start gpu=4 13:15:54
+nneg/bigblue4 exit=0 13:25:23
+ARM_nneg_DONE
+npos/adaptec1 start gpu=4 13:25:23
+npos/adaptec1 exit=0 13:26:14
+npos/adaptec2 start gpu=4 13:26:14
+npos/adaptec2 exit=0 13:27:19
+npos/adaptec3 start gpu=4 13:27:19
+npos/adaptec3 exit=0 13:29:46
+npos/adaptec4 start gpu=4 13:29:47
+npos/adaptec4 exit=0 13:32:55
+npos/bigblue1 start gpu=4 13:32:55
+npos/bigblue1 exit=0 13:34:01
+npos/bigblue2 start gpu=4 13:34:01
+npos/bigblue2 exit=0 13:36:29
+npos/bigblue3 start gpu=4 13:36:30
+npos/bigblue3 exit=0 13:42:10
+npos/bigblue4 start gpu=4 13:42:11
+npos/bigblue4 exit=0 13:51:49
+ARM_npos_DONE
+ALL_DONE

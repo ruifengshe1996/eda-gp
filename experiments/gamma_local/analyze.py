@@ -23,8 +23,14 @@ RAMP = [("experiments/lambda_ramp/logs/s070", "{d}.log"),
         (None, None),  # s=1.0 is the baseline itself
         ("experiments/lambda_ramp/logs/s143", "{d}.log"),
         ("experiments/lambda_ramp/logs/s200", "{d}.log")]
+# phase 1 preserved the mean per-net OVERFLOW (gamma's mean then drifts up by
+# Jensen); phase 2 preserves the mean GAMMA, isolating locality itself
 ARMS = {"gneg": "experiments/gamma_local/logs/gneg",
-        "gpos": "experiments/gamma_local/logs/gpos"}
+        "gpos": "experiments/gamma_local/logs/gpos",
+        "nneg": "experiments/gamma_local/logs/nneg",
+        "npos": "experiments/gamma_local/logs/npos"}
+ARMS = {k: v for k, v in ARMS.items()
+        if os.path.isdir(os.path.join(GP, v))}
 
 
 def final(p):
@@ -94,9 +100,13 @@ def main():
         big = sum(1 for x in dov[a] if abs(x) > 0.03)
         print(f"  {a}: |Δov@100| > 0.03 的设计数 = {big}/8, 平均 Δ = "
               f"{sum(dov[a]) / len(dov[a]):+.3f}" if dov[a] else f"  {a}: 无数据")
-    if dov["gpos"] and dov["gneg"]:
-        n_lower = sum(1 for p, n in zip(dov["gpos"], dov["gneg"]) if n < p)
-        print(f"  G3 gneg 的 ov@100 低于 gpos 的设计数 = {n_lower}/8")
+    for pos, neg, tag in (("gpos", "gneg", "G3 阶段1"), ("npos", "nneg", "H2 阶段2")):
+        if dov.get(pos) and dov.get(neg):
+            n_lower = sum(1 for p, n in zip(dov[pos], dov[neg]) if n < p)
+            mp = sum(dov[pos]) / len(dov[pos])
+            mn = sum(dov[neg]) / len(dov[neg])
+            print(f"  {tag}: {neg} 的 ov@100 低于 {pos} 的设计数 = {n_lower}/8; "
+                  f"平均偏移 {pos} {mp:+.3f} vs {neg} {mn:+.3f}, 差 {mn - mp:+.3f}")
 
     # G4: residual to the ramp frontier
     print("\n" + "-" * 96)

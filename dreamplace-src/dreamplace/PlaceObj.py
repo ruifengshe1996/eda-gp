@@ -1078,6 +1078,20 @@ class PlaceObj(nn.Module):
                                      "(norm=%s, applied ratio %.3f)"
                                      % (ratio, norm,
                                         float(coef_net.mean() / coef)))
+                    if int(getattr(self.params, "gamma_local_shuffle", 0)):
+                        # Placebo control: keep the exact multiset of per-net
+                        # gamma values but destroy every spatial relationship by
+                        # permuting them across nets. If the damage is driven by
+                        # the DISPERSION of gamma (heterogeneous gamma silently
+                        # reweights nets, because the WA gradient magnitude
+                        # depends on gamma) rather than by locality, this arm
+                        # reproduces the localized arms. Fixed seed for
+                        # determinism.
+                        g = torch.Generator(device=coef_net.device)
+                        g.manual_seed(1000 + iteration)
+                        coef_net = coef_net[torch.randperm(
+                            coef_net.numel(), generator=g,
+                            device=coef_net.device)]
                     self.gamma_net.data.copy_(base_gamma * coef_net)
                     self._gamma_net_ready = True
                 else:

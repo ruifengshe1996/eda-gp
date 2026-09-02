@@ -176,6 +176,10 @@
     "description" : "what the per-net gamma map preserves: 'overflow' keeps the mean per-net overflow equal to the global overflow (gamma's mean then drifts up by Jensen), 'gamma' rescales so the mean gamma matches the global schedule -- a pure redistribution of gamma",
     "default" : "overflow"
     },
+"gamma_local_shuffle" : {
+    "description" : "placebo control: randomly permute the per-net gamma values across nets, preserving their distribution while destroying all spatial structure",
+    "default" : 0
+    },
 "gamma_local_sign" : {
     "description" : "+1 = standard map (congested nets get the smooth/large gamma); -1 = mirror the per-net overflow about the global mean, inverting which nets get the sharp model while keeping the schedule mean identical",
     "default" : 1
