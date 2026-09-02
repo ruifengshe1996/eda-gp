@@ -36,6 +36,7 @@ template <typename T>
 int computeWeightedAverageWirelengthCudaMergedLauncher(
     const T* x, const T* y, const int* flat_netpin, const int* netpin_start,
     const unsigned char* net_mask, int num_nets, const T* inv_gamma,
+    int gamma_stride,
     T* partial_wl, T* grad_intermediate_x, T* grad_intermediate_y);
 
 /// @brief add net weights to gradient
@@ -95,6 +96,9 @@ std::vector<at::Tensor> weighted_average_wirelength_forward(
             DREAMPLACE_TENSOR_DATA_PTR(netpin_start, int),
             DREAMPLACE_TENSOR_DATA_PTR(net_mask, unsigned char), num_nets,
             DREAMPLACE_TENSOR_DATA_PTR(inv_gamma, scalar_t),
+            // a per-net inv_gamma tensor (numel == num_nets) enables spatially
+            // localized gamma; a 1-element tensor keeps the original behaviour
+            (inv_gamma.numel() > 1) ? 1 : 0,
             DREAMPLACE_TENSOR_DATA_PTR(partial_wl, scalar_t),
             DREAMPLACE_TENSOR_DATA_PTR(grad_intermediate, scalar_t),
             DREAMPLACE_TENSOR_DATA_PTR(grad_intermediate, scalar_t) + num_pins);

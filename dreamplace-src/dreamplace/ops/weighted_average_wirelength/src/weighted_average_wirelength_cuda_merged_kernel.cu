@@ -20,6 +20,9 @@ __global__ void computeWeightedAverageWirelength(
     const unsigned char *net_mask,
     int num_nets,
     const T *inv_gamma,
+    // 0 -> inv_gamma is a single scalar shared by all nets (default, bit-identical
+    // to the original kernel); 1 -> inv_gamma is a per-net array indexed by net id
+    int gamma_stride,
     T *partial_wl,
     T *grad_intermediate_x, T *grad_intermediate_y)
 {
@@ -40,6 +43,8 @@ __global__ void computeWeightedAverageWirelength(
             grads = grad_intermediate_x;
         }
 
+        const T ig = inv_gamma[ii * gamma_stride];
+
         // int degree = netpin_start[ii+1]-netpin_start[ii];
         T x_max = -FLT_MAX;
         T x_min = FLT_MAX;
@@ -57,8 +62,8 @@ __global__ void computeWeightedAverageWirelength(
         for (int j = netpin_start[ii]; j < netpin_start[ii + 1]; ++j)
         {
             T xx = values[flat_netpin[j]];
-            T exp_x = exp((xx - x_max) * (*inv_gamma));
-            T exp_nx = exp((x_min - xx) * (*inv_gamma));
+            T exp_x = exp((xx - x_max) * ig);
+            T exp_nx = exp((x_min - xx) * ig);
 
             xexp_x_sum += xx * exp_x;
             xexp_nx_sum += xx * exp_nx;
@@ -68,16 +73,16 @@ __global__ void computeWeightedAverageWirelength(
 
         partial_wl[i] = xexp_x_sum / exp_x_sum - xexp_nx_sum / exp_nx_sum;
 
-        T b_x = (*inv_gamma) / (exp_x_sum);
+        T b_x = ig / (exp_x_sum);
         T a_x = (1.0 - b_x * xexp_x_sum) / exp_x_sum;
-        T b_nx = -(*inv_gamma) / (exp_nx_sum);
+        T b_nx = -ig / (exp_nx_sum);
         T a_nx = (1.0 - b_nx * xexp_nx_sum) / exp_nx_sum;
 
         for (int j = netpin_start[ii]; j < netpin_start[ii + 1]; ++j)
         {
             T xx = values[flat_netpin[j]];
-            T exp_x = exp((xx - x_max) * (*inv_gamma));
-            T exp_nx = exp((x_min - xx) * (*inv_gamma));
+            T exp_x = exp((xx - x_max) * ig);
+            T exp_nx = exp((x_min - xx) * ig);
 
             grads[flat_netpin[j]] = (a_x + b_x * xx) * exp_x - (a_nx + b_nx * xx) * exp_nx;
         }
@@ -92,6 +97,7 @@ int computeWeightedAverageWirelengthCudaMergedLauncher(
     const unsigned char *net_mask,
     int num_nets,
     const T *inv_gamma,
+    int gamma_stride,
     T *partial_wl,
     T *grad_intermediate_x, T *grad_intermediate_y)
 {
@@ -105,6 +111,7 @@ int computeWeightedAverageWirelengthCudaMergedLauncher(
         net_mask,
         num_nets,
         inv_gamma,
+        gamma_stride,
         partial_wl,
         grad_intermediate_x, grad_intermediate_y);
 
@@ -119,6 +126,7 @@ int computeWeightedAverageWirelengthCudaMergedLauncher(
         const unsigned char *net_mask,                                 \
         int num_nets,                                                  \
         const T *inv_gamma,                                            \
+        int gamma_stride,                                              \
         T *partial_wl,                                                 \
         T *grad_intermediate_x, T *grad_intermediate_y);
 

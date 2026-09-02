@@ -164,6 +164,26 @@
     "description" : "if > 0, set the initial density weight to this absolute value instead of normalizing by the t=0 gradient ratio (N1 schedule state-alignment; look the value up from a reference trajectory at the init overflow)",
     "default" : 0.0
     },
+"gamma_local_flag" : {
+    "description" : "make gamma a per-net quantity driven by the local (coarse-bin) overflow at each net's pins instead of the global average overflow (N4 spatial localization of the continuation schedule)",
+    "default" : 0
+    },
+"gamma_local_alpha" : {
+    "description" : "blend between global and local overflow when computing per-net gamma: ov = (1-alpha)*ov_global + alpha*ov_local. 0 reproduces the global schedule exactly, 1 is fully local",
+    "default" : 1.0
+    },
+"gamma_local_sign" : {
+    "description" : "+1 = standard map (congested nets get the smooth/large gamma); -1 = mirror the per-net overflow about the global mean, inverting which nets get the sharp model while keeping the schedule mean identical",
+    "default" : 1
+    },
+"gamma_local_bins" : {
+    "description" : "resolution of the coarse square grid used to measure local overflow for per-net gamma",
+    "default" : 64
+    },
+"gamma_local_interval" : {
+    "description" : "recompute the per-net gamma map every N iterations (the map moves slowly; amortizes its cost)",
+    "default" : 10
+    },
 "density_weight_ramp_scale" : {
     "description" : "exponent applied to the multiplicative density-weight (lambda) update factor: lambda *= mu**scale. 1.0 reproduces the RePlAce default ramp; >1 traverses the same lambda decades in fewer iterations (N5 ramp-rate knob)",
     "default" : 1.0

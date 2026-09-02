@@ -203,6 +203,9 @@ class PlaceObj(nn.Module):
         self.num_bins_y = num_bins_y
         self.bin_size_x = (placedb.xh - placedb.xl) / num_bins_x
         self.bin_size_y = (placedb.yh - placedb.yl) / num_bins_y
+        # N4 (default off): per-net gamma tensor. Allocated only when the flag is
+        # set, and only on GPU -- the CPU merged kernel still assumes a scalar.
+        self.gamma_net = None
         self.gamma = torch.tensor(10 * self.base_gamma(params, placedb),
                                   dtype=self.data_collections.pos[0].dtype,
                                   device=self.data_collections.pos[0].device)
@@ -463,6 +466,23 @@ class PlaceObj(nn.Module):
         @param pin_pos_op the op to compute pin locations according to cell locations
         """
 
+        # N4: when per-net gamma is enabled, hand the wirelength op a per-net
+        # tensor instead of the scalar. The CUDA merged kernel switches to
+        # per-net indexing purely on tensor size, so nothing else changes; the
+        # CPU kernel still assumes a scalar, hence the gpu guard.
+        if int(getattr(params, "gamma_local_flag", 0)) and params.gpu:
+            num_nets = data_collections.net_mask_ignore_large_degrees.numel()
+            self.gamma_net = torch.full((num_nets, ),
+                                        float(self.gamma.data.item()),
+                                        dtype=self.gamma.dtype,
+                                        device=self.gamma.device)
+            logging.info("per-net gamma enabled (N4): %d nets, alpha=%g, "
+                         "bins=%d, interval=%d" %
+                         (num_nets, float(getattr(params, "gamma_local_alpha", 1.0)),
+                          int(getattr(params, "gamma_local_bins", 64)),
+                          int(getattr(params, "gamma_local_interval", 10))))
+        gamma_for_op = self.gamma_net if self.gamma_net is not None else self.gamma
+
         # use WeightedAverageWirelength atomic
         wirelength_for_pin_op = weighted_average_wirelength.WeightedAverageWirelength(
             flat_netpin=data_collections.flat_net2pin_map,
@@ -471,7 +491,7 @@ class PlaceObj(nn.Module):
             net_weights=data_collections.net_weights,
             net_mask=data_collections.net_mask_ignore_large_degrees,
             pin_mask=data_collections.pin_mask_ignore_fixed_macros,
-            gamma=self.gamma,
+            gamma=gamma_for_op,
             algorithm='merged')
 
         # wirelength for position
@@ -919,6 +939,91 @@ class PlaceObj(nn.Module):
         """
         return params.gamma * (self.bin_size_x + self.bin_size_y)
 
+    def local_net_overflow(self):
+        """@brief per-net local overflow, used to localize gamma (N4).
+
+        Builds a coarse square density grid over the placement region from the
+        current movable+filler node areas, converts each bin to an overflow
+        value normalized so that the mean over bins equals DREAMPlace's global
+        overflow, then assigns every net the maximum over the bins its pins
+        occupy. Returns a tensor of length num_nets (or None when unavailable).
+        """
+        dc = self.data_collections
+        placedb = self.placedb
+        pos = dc.pos[0].data
+        num_nodes = placedb.num_nodes
+        nm, nf = placedb.num_movable_nodes, placedb.num_filler_nodes
+        if nm <= 0:
+            return None
+        B = max(4, int(getattr(self.params, "gamma_local_bins", 64)))
+        xl, yl, xh, yh = placedb.xl, placedb.yl, placedb.xh, placedb.yh
+
+        # cells that carry density: movable cells and fillers
+        idx = torch.cat([torch.arange(nm, device=pos.device),
+                         torch.arange(num_nodes - nf, num_nodes, device=pos.device)]) \
+            if nf > 0 else torch.arange(nm, device=pos.device)
+        cx = pos[idx] + dc.node_size_x[idx] * 0.5
+        cy = pos[num_nodes + idx] + dc.node_size_y[idx] * 0.5
+        area = dc.node_size_x[idx] * dc.node_size_y[idx]
+
+        bx = ((cx - xl) / (xh - xl) * B).long().clamp_(0, B - 1)
+        by = ((cy - yl) / (yh - yl) * B).long().clamp_(0, B - 1)
+        flat = bx * B + by
+        dens = torch.zeros(B * B, dtype=pos.dtype, device=pos.device)
+        dens.scatter_add_(0, flat, area)
+
+        bin_area = (xh - xl) * (yh - yl) / (B * B)
+        capacity = float(self.params.target_density) * bin_area
+        # raw per-bin congestion; the absolute scale does not matter because the
+        # map is renormalized below to preserve the global schedule's mean
+        ov_bin = (dens / max(capacity, 1e-12) - 1.0).clamp_(min=0)
+
+        # every net takes the max overflow over the bins holding its pins
+        pin_node = dc.pin2node_map.long()
+        pin_bin = torch.zeros_like(pin_node)
+        pcx = pos[pin_node] + dc.node_size_x[pin_node] * 0.5
+        pcy = pos[num_nodes + pin_node] + dc.node_size_y[pin_node] * 0.5
+        pbx = ((pcx - xl) / (xh - xl) * B).long().clamp_(0, B - 1)
+        pby = ((pcy - yl) / (yh - yl) * B).long().clamp_(0, B - 1)
+        pin_bin = pbx * B + pby
+        pin_ov = ov_bin[pin_bin]
+
+        num_nets = self.gamma_net.numel()
+        net_ov = torch.zeros(num_nets, dtype=pos.dtype, device=pos.device)
+        net_ov.scatter_reduce_(0, dc.pin2net_map.long(), pin_ov,
+                               reduce="amax", include_self=True)
+        return net_ov
+
+    def localized_overflow(self, overflow_avg):
+        """@brief per-net overflow rescaled to preserve the global schedule's mean.
+
+        Localizing gamma must be a pure spatial REDISTRIBUTION: if the mean of
+        the per-net overflow drifted away from the global value, the continuation
+        schedule would silently run at a different speed and the experiment would
+        confound "localized" with "slower/faster". So the raw per-net congestion
+        is rescaled to have mean equal to the global overflow. (An earlier
+        version normalized per bin against the global metric and clamped at 1;
+        because a congested bin sits at ~1/utilization, essentially every net
+        saturated at 1 for the whole run, pinning gamma at its smoothest value.)
+        """
+        net_ov = self.local_net_overflow()
+        if net_ov is None:
+            return None
+        mean = net_ov.mean()
+        if not torch.isfinite(mean) or mean <= 0:
+            return None
+        net_ov = net_ov * (float(overflow_avg) / mean)
+        # Optional sign flip. The standard map (sign=+1) gives congested nets a
+        # LARGE gamma (smooth, weak pull) and uncongested nets a SMALL gamma
+        # (sharp, strong pull) -- which pulls the periphery back in and pushes
+        # overflow UP. sign=-1 mirrors each net about the global overflow, so the
+        # spatial assignment is inverted while the MEAN is preserved exactly:
+        # the two arms run the identical average schedule and differ only in
+        # which nets get the sharp model. That makes the pair a clean sign test.
+        if int(getattr(self.params, "gamma_local_sign", 1)) < 0:
+            net_ov = 2.0 * float(overflow_avg) - net_ov
+        return net_ov.clamp_(min=0.0, max=1.0)
+
     def update_gamma(self, iteration, overflow, base_gamma):
         """
         @brief update gamma in wirelength model
@@ -945,6 +1050,21 @@ class PlaceObj(nn.Module):
             self.gamma_coef_min = min(self.gamma_coef_min, float(coef))
             coef = torch.tensor(self.gamma_coef_min)
         self.gamma.data.fill_((base_gamma * coef).item())
+        # N4: spatially localized gamma. self.gamma stays the scalar used for
+        # logging and for the schedule; self.gamma_net is what the wirelength op
+        # actually reads when the flag is on.
+        if getattr(self, "gamma_net", None) is not None:
+            interval = max(1, int(getattr(self.params, "gamma_local_interval", 10)))
+            if iteration % interval == 0 or not hasattr(self, "_gamma_net_ready"):
+                alpha = float(getattr(self.params, "gamma_local_alpha", 1.0))
+                net_ov = self.localized_overflow(overflow_avg)
+                if net_ov is not None:
+                    ov_used = (1.0 - alpha) * float(overflow_avg) + alpha * net_ov
+                    coef_net = torch.pow(10, (ov_used - 0.1) * 20 / 9 - 1)
+                    self.gamma_net.data.copy_(base_gamma * coef_net)
+                    self._gamma_net_ready = True
+                else:
+                    self.gamma_net.data.fill_((base_gamma * coef).item())
         return True
 
     def build_noise(self, params, placedb, data_collections):
