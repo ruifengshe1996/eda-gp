@@ -49,6 +49,9 @@
 | 迭代数混杂 | iteration-count confound | 各初始化变体的 wHPWL 差异与其迭代数差异高度共线（r=−0.967），需固定初始化的斜坡率曲线才能分离（实验 11） |
 | overflow 吸引子 | overflow attractor | 前 ~100 迭代由线长目标独自决定的 overflow 平衡值，设计常数（ISPD2005 为 0.72~0.86），与初始化无关（`docs/OVERFLOW_ANALYSIS.md`） |
 | λ 调度的入口/速率 | schedule entry / rate | 省迭代的两个杠杆：入口 = λ₀（`initial_density_weight_absolute`），速率 = 斜坡（`density_weight_ramp_scale`）；实验 12 测得速率便宜约 2.5 倍 |
+| 逐网线 γ | per-net gamma (`gamma_local_flag` 系列) | γ 由每条网线引脚所在粗 bin 的局部 overflow 决定；`gamma_local_norm` 选保 overflow 均值或保 γ 均值，`gamma_local_sign` 镜像空间指派，`gamma_local_shuffle` 为安慰剂（实验 13） |
+| Jensen 膨胀 | Jensen inflation | coef(ov) 对 ov 是凸函数，保逐网线 overflow 均值时 γ 的均值被抬高（实测最高 5.05×）；实验 13 证明它真实存在但**不是**损害的原因 |
+| 安慰剂臂 | placebo arm | 保留某机制产生的数值多重集合、随机置换以摧毁其结构的对照臂；用于区分"数值分布"与"结构"的效应（实验 13 第三阶段） |
 | 两段式布局 | two-stage placement | 检出可动宏时 `macro_place_flag` 自动复制 stage 0，ISPD2005 中仅 bigblue3 触发；其 ~1000 迭代由此而来，非发散恢复 |
 
 ## 2. 实验编号（目录名 — 内容一句话）
@@ -67,6 +70,7 @@
 | 实验 R | `experiments/conn_rebuild` | conn-y 缺陷修复后 conn 系全量重跑（33 运行），修复后权威数据 | 干净 |
 | 实验 8（计划） | — | ISPD2015 盲测（全量、路由预注册、零调参） | — |
 | 实验 9（计划） | — | 熔化点位置对照（注册预测：adaptec3 底边点熔化应胜修复版连通性场初始化） | — |
+| 实验 13 | `experiments/gamma_local` | 逐网线 γ（N4）：符号判据 → Jensen 修正 → 安慰剂对照，三阶段 5 臂 40 运行 | 干净；N4 作为 overflow 杠杆被证伪 |
 | 实验 12 | `experiments/lambda_entry` | center 几何 + obsspread 的实测 λ₀，把标量与几何解耦；E1–E4 全部成立 | 干净，8 运行 |
 | 实验 11 | `experiments/lambda_ramp` | center 初始化 × λ 斜坡率（s=0.70/1.43/2.00），分离迭代数混杂的对照实验 | **干净，24 运行完成** |
 | 实验 10 | `experiments/align_filler` | N1 调度状态对齐 × N2 逆密度 filler 播种的 2×2 消融，基座 obsspread（(off,off) 臂复用实验 R） | 干净 |
@@ -82,7 +86,8 @@
 | S1–S3 | ADAPTEC4_DIAGNOSIS | 后续实验计划（S1 多种子方差；S2 GiFt 判别；S3 场+重熔）；S1 已并入实验 3/4，S2 即实验 5 |
 | P0–P4 | RESULTS_SUMMARY | 修复后下一步优先级（P0 收缩邻域深挖；P1 调度×初始化联合重检；P2 ISPD2015 盲测；P3 bigblue3 展开修复；P4 stop_overflow 稳健性）——**已被实验 11 后的 Q0–Q4 取代** |
 | Q0–Q4 | RESULTS_SUMMARY | 实验 11 后重排的优先级（Q0 前沿拐点定位；Q1 幸存正效应的机制；Q2 stop_overflow × 斜坡合流；Q3 ISPD2015 盲测改主轴；Q4 N3/N4/N6） |
-| R1–R5 | 实验 12 | `experiments/lambda_entry` | center 几何 + obsspread 的实测 λ₀，把标量与几何解耦；E1–E4 全部成立 | 干净，8 运行 |
+| R1–R5 | 实验 13 | `experiments/gamma_local` | 逐网线 γ（N4）：符号判据 → Jensen 修正 → 安慰剂对照，三阶段 5 臂 40 运行 | 干净；N4 作为 overflow 杠杆被证伪 |
+| 实验 12 | `experiments/lambda_entry` | center 几何 + obsspread 的实测 λ₀，把标量与几何解耦；E1–E4 全部成立 | 干净，8 运行 |
 | 实验 11 | 实验 11 的预注册预测（R1 旋钮有效性；R2 速度模式是否被斜坡支配；R3 混杂的解释力；R4 慢斜坡方向；R5 bigblue3 两段式）；结局：R1/R2/R4/R5 成立，R3 部分成立 |
 | C1–C5 | MECHANISM_ANALYSIS | 劣化机制论证链（C1 λ₀ 归一化强制重演熔化；C2 γ 瞬时映射过锐；C3 长程错误无修复通道；C4 场系残余损失的两个来源；C5 λ 更新律无阻尼振荡） |
 | N1–N6 | MECHANISM_ANALYSIS | 新机制方向（N1 调度状态对齐——**实验 10 证伪**；N2 逆密度 filler 播种——**实验 10 证伪**；N3 中途长程重排算子；N4 γ 空间局部化；N5 λ 目标轨迹控制器——**原动机（消除 λ 振荡）被实验 11 证伪，λ 几乎不振荡；若重提须改为「给定迭代预算自动定斜坡」的工程定位**；N6 单步位移信赖域） |

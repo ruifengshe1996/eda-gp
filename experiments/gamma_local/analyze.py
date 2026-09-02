@@ -28,7 +28,9 @@ RAMP = [("experiments/lambda_ramp/logs/s070", "{d}.log"),
 ARMS = {"gneg": "experiments/gamma_local/logs/gneg",
         "gpos": "experiments/gamma_local/logs/gpos",
         "nneg": "experiments/gamma_local/logs/nneg",
-        "npos": "experiments/gamma_local/logs/npos"}
+        "npos": "experiments/gamma_local/logs/npos",
+        # phase 3 placebo: npos's gamma multiset permuted randomly across nets
+        "nshuf": "experiments/gamma_local/logs/nshuf"}
 ARMS = {k: v for k, v in ARMS.items()
         if os.path.isdir(os.path.join(GP, v))}
 
@@ -100,6 +102,11 @@ def main():
         big = sum(1 for x in dov[a] if abs(x) > 0.03)
         print(f"  {a}: |Δov@100| > 0.03 的设计数 = {big}/8, 平均 Δ = "
               f"{sum(dov[a]) / len(dov[a]):+.3f}" if dov[a] else f"  {a}: 无数据")
+    if dov.get("nshuf") and dov.get("npos"):
+        ms = sum(dov["nshuf"]) / len(dov["nshuf"])
+        mp = sum(dov["npos"]) / len(dov["npos"])
+        print(f"  P1 安慰剂 Δov@100：nshuf {ms:+.3f} vs npos {mp:+.3f}, 差 {ms - mp:+.3f}"
+              f"（阈值 ±0.03 → {'成立' if abs(ms - mp) <= 0.03 else '不成立'}）")
     for pos, neg, tag in (("gpos", "gneg", "G3 阶段1"), ("npos", "nneg", "H2 阶段2")):
         if dov.get(pos) and dov.get(neg):
             n_lower = sum(1 for p, n in zip(dov[pos], dov[neg]) if n < p)
@@ -145,6 +152,10 @@ def main():
             line += f"{'':>13}{'':>12}{'--':>12}"
     print(line)
     print("\n  判据：残差 < −0.5pp ⇒ 本项目第一个真正战胜等迭代数 center 的机制。")
+    if resid.get("nshuf") and resid.get("npos"):
+        gs, gp = geomean(resid["nshuf"]), geomean(resid["npos"])
+        print(f"  P1 安慰剂残差：nshuf {gs:+.2f} vs npos {gp:+.2f}, 差 {gs - gp:+.2f}pp"
+              f"（阈值 ±1.0pp → {'成立：损害由 γ 离散度驱动，与空间结构无关' if abs(gs - gp) <= 1.0 else '不成立：空间结构携带价值'}）")
 
 
 if __name__ == "__main__":
