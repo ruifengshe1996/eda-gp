@@ -7,14 +7,14 @@ source $GP/env.sh
 cd $GP/install
 EXP=$GP/experiments/gamma_local
 STATUS=$EXP/logs/driver_status.txt
-mkdir -p $EXP/logs/{gpos,gneg}
+mkdir -p $EXP/logs/{gpos,gneg,npos,nneg}
 
 pick_gpu() {
   nvidia-smi --query-gpu=index,memory.used --format=csv,noheader,nounits \
     | sort -t, -k2 -n | head -1 | cut -d, -f1 | tr -d ' '
 }
 
-for arm in gneg gpos; do   # the open question (gneg) runs first
+for arm in gneg gpos nneg npos; do   # phase 1: gneg/gpos; phase 2 (Jensen-corrected): nneg/npos
   for d in adaptec1 adaptec2 adaptec3 adaptec4 bigblue1 bigblue2 bigblue3 bigblue4; do
     log=$EXP/logs/$arm/$d.log
     if grep -q "placement takes" "$log" 2>/dev/null; then

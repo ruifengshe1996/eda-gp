@@ -1,0 +1,35 @@
+gneg/adaptec1 start gpu=4 12:00:30
+gneg/adaptec1 exit=0 12:01:22
+gneg/adaptec2 start gpu=4 12:01:22
+gneg/adaptec2 exit=0 12:02:32
+gneg/adaptec3 start gpu=4 12:02:32
+gneg/adaptec3 exit=0 12:05:03
+gneg/adaptec4 start gpu=4 12:05:04
+gneg/adaptec4 exit=0 12:08:04
+gneg/bigblue1 start gpu=4 12:08:04
+gneg/bigblue1 exit=0 12:09:14
+gneg/bigblue2 start gpu=4 12:09:15
+gneg/bigblue2 exit=0 12:11:43
+gneg/bigblue3 start gpu=4 12:11:44
+gneg/bigblue3 exit=0 12:17:56
+gneg/bigblue4 start gpu=4 12:17:56
+gneg/bigblue4 exit=0 12:28:01
+ARM_gneg_DONE
+gpos/adaptec1 start gpu=4 12:28:02
+gpos/adaptec1 exit=0 12:28:57
+gpos/adaptec2 start gpu=4 12:28:58
+gpos/adaptec2 exit=0 12:30:05
+gpos/adaptec3 start gpu=4 12:30:06
+gpos/adaptec3 exit=0 12:32:54
+gpos/adaptec4 start gpu=4 12:32:54
+gpos/adaptec4 exit=0 12:36:31
+gpos/bigblue1 start gpu=4 12:36:32
+gpos/bigblue1 exit=0 12:37:42
+gpos/bigblue2 start gpu=4 12:37:42
+gpos/bigblue2 exit=0 12:40:19
+gpos/bigblue3 start gpu=4 12:40:19
+gpos/bigblue3 exit=0 12:46:16
+gpos/bigblue4 start gpu=4 12:46:16
+gpos/bigblue4 exit=0 12:56:07
+ARM_gpos_DONE
+ALL_DONE

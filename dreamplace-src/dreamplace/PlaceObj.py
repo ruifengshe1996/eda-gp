@@ -1061,6 +1061,23 @@ class PlaceObj(nn.Module):
                 if net_ov is not None:
                     ov_used = (1.0 - alpha) * float(overflow_avg) + alpha * net_ov
                     coef_net = torch.pow(10, (ov_used - 0.1) * 20 / 9 - 1)
+                    # coef is CONVEX in overflow, so preserving the mean of the
+                    # per-net overflow does NOT preserve the mean of gamma: by
+                    # Jensen, E[coef] > coef(E[ov]), and localization silently
+                    # smooths the wirelength model on average. "gamma" mode
+                    # rescales coef so its mean matches the global schedule's
+                    # value, making localization a pure redistribution of gamma
+                    # itself -- the only version that isolates locality from
+                    # "the model just got smoother".
+                    norm = str(getattr(self.params, "gamma_local_norm", "overflow"))
+                    ratio = float(coef_net.mean() / coef) if float(coef) > 0 else 1.0
+                    if norm == "gamma" and ratio > 0:
+                        coef_net = coef_net / ratio
+                    if iteration % (interval * 10) == 0:
+                        logging.info("gamma_local: mean(coef_net)/coef = %.3f "
+                                     "(norm=%s, applied ratio %.3f)"
+                                     % (ratio, norm,
+                                        float(coef_net.mean() / coef)))
                     self.gamma_net.data.copy_(base_gamma * coef_net)
                     self._gamma_net_ready = True
                 else:

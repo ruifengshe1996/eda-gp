@@ -172,6 +172,10 @@
     "description" : "blend between global and local overflow when computing per-net gamma: ov = (1-alpha)*ov_global + alpha*ov_local. 0 reproduces the global schedule exactly, 1 is fully local",
     "default" : 1.0
     },
+"gamma_local_norm" : {
+    "description" : "what the per-net gamma map preserves: 'overflow' keeps the mean per-net overflow equal to the global overflow (gamma's mean then drifts up by Jensen), 'gamma' rescales so the mean gamma matches the global schedule -- a pure redistribution of gamma",
+    "default" : "overflow"
+    },
 "gamma_local_sign" : {
     "description" : "+1 = standard map (congested nets get the smooth/large gamma); -1 = mirror the per-net overflow about the global mean, inverting which nets get the sharp model while keeping the schedule mean identical",
     "default" : 1
