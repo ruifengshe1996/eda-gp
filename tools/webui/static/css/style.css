@@ -187,3 +187,21 @@ code, pre, .diff, .stat { font-family: ui-monospace, SFMono-Regular, Menlo,
 .ov-prev { left: 16px; }
 .ov-next { right: 16px; }
 #overlay:not(.multi) .ov-prev, #overlay:not(.multi) .ov-next { display: none; }
+
+
+/* ---- compare feature ---- */
+.cmp-bar { display: flex; gap: .6rem; align-items: center; margin: .4rem 0 1rem;
+  padding: .5rem .8rem; background: #f3f5f8; border: 1px solid #dde2ea; border-radius: 6px; }
+.cmp-bar .btn[disabled] { opacity: .5; cursor: not-allowed; }
+.cmp-chk { margin-right: .4rem; transform: scale(1.15); cursor: pointer; }
+.card.selected { outline: 2px solid #2b6cb0; }
+.cmp-picker { margin-bottom: 1rem; padding: .6rem .8rem; background: #f3f5f8;
+  border: 1px solid #dde2ea; border-radius: 6px; }
+.cmp-pick { display: inline-block; margin: .15rem .6rem .15rem 0; white-space: nowrap; }
+.cmp-table th.grp { background: #e8edf5; }
+.cmp-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
+.cmp-table td.pos { color: #b03a2e; }
+.cmp-table td.neg { color: #1e7e34; }
+.cmp-table td.ref { background: #fbfbe6; }
+.cmp-table tr.geo td { font-weight: 600; border-top: 2px solid #999; }
+.series-chk.ref { border-left: 3px dashed var(--c); }

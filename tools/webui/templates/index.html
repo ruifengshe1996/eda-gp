@@ -2,6 +2,12 @@
 {% block title %}实验总览 · EDA-GP{% endblock %}
 {% block content %}
 <h1 class="page-title">实验总览</h1>
+<div class="cmp-bar" id="cmp-bar">
+  <span id="cmp-count">已选 0 个实验</span>
+  <button class="btn" id="cmp-go" disabled>比较所选</button>
+  <button class="btn" id="cmp-clear">清空</button>
+  <a class="btn" href="{{ url_for('compare') }}">比较页</a>
+</div>
 {% if not experiments %}
 <p class="empty-hint">未找到任何实验目录（experiments/ 为空或不存在）。</p>
 {% endif %}
@@ -9,6 +15,7 @@
   {% for e in experiments %}
   <a class="card" href="{{ url_for('exp_detail', name=e.name) }}">
     <div class="card-head">
+      <input type="checkbox" class="cmp-chk" data-name="{{ e.name }}" title="加入比较">
       <span class="card-name">{{ e.name }}</span>
       {% if e.errata %}<span class="badge badge-warn" title="README 含勘误横幅">⚠️ 勘误</span>{% endif %}
     </div>
@@ -39,4 +46,7 @@
   </a>
   {% endfor %}
 </div>
+{% endblock %}
+{% block scripts %}
+<script>initIndexPage();</script>
 {% endblock %}

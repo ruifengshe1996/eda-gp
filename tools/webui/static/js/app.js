@@ -289,13 +289,18 @@ function seriesColor(i, n) {
   return "hsl(" + hue + ", 65%, 45%)";
 }
 
+let curvesWithRef = false;
+
 function loadCurves() {
   const block = document.getElementById("curves-block");
   if (!block) return;
   const ctrl = document.getElementById("curves-controls");
-  fetch("/api/exp/" + encodeURIComponent(window.EXP.name) + "/curves")
+  fetch("/api/exp/" + encodeURIComponent(window.EXP.name) + "/curves" +
+        (curvesWithRef ? "?ref=1" : ""))
     .then((r) => r.json())
     .then((data) => {
+      const prevDesign = document.getElementById("design-select");
+      const keep = prevDesign ? prevDesign.value : null;
       curveSeries = data.series || [];
       if (!curveSeries.length) {
         block.innerHTML =
@@ -303,6 +308,11 @@ function loadCurves() {
         return;
       }
       buildCurveControls(ctrl);
+      if (keep) {
+        const ds = document.getElementById("design-select");
+        ds.value = keep;
+        ds.dispatchEvent(new Event("change", { bubbles: true }));
+      }
       redrawCharts();
     })
     .catch(() => {
@@ -339,6 +349,8 @@ function buildCurveControls(ctrl) {
     + ' <button class="btn" id="sel-all">全选</button>'
     + ' <button class="btn" id="sel-none">全不选</button>'
     + ' <label class="ctrl-label"><input type="checkbox" id="log-scale" checked> wHPWL 对数刻度</label>'
+    + ' <label class="ctrl-label"><input type="checkbox" id="with-ref"'
+    + (curvesWithRef ? " checked" : "") + "> 叠加 center 基线（虚线）</label>"
     + "</div>";
 
   Object.keys(groups).sort().forEach((g) => {
@@ -347,7 +359,7 @@ function buildCurveControls(ctrl) {
     groups[g].forEach((i) => {
       const s = curveSeries[i];
       const checked = seriesDesign(s.label) === defaultDesign ? " checked" : "";
-      html += '<label class="series-chk" style="--c:' +
+      html += '<label class="series-chk' + (s.ref ? " ref" : "") + '" style="--c:' +
         seriesColor(i, curveSeries.length) + '">' +
         '<input type="checkbox" data-idx="' + i + '"' + checked + "> " +
         escapeHtml(seriesDesign(s.label)) + "</label>";
@@ -357,6 +369,11 @@ function buildCurveControls(ctrl) {
   ctrl.innerHTML = html;
 
   ctrl.addEventListener("change", (e) => {
+    if (e.target.id === "with-ref") {
+      curvesWithRef = e.target.checked;
+      loadCurves();
+      return;
+    }
     if (e.target.id === "design-select") {
       const d = e.target.value;
       if (d) {
@@ -392,6 +409,7 @@ function makeDatasets(indices, field) {
       label: s.label,
       data: s.iter.map((x, k) => ({ x, y: s[field][k] })),
       borderColor: seriesColor(i, curveSeries.length),
+      borderDash: s.ref ? [6, 4] : [],
       backgroundColor: "transparent",
     };
   });
@@ -473,5 +491,249 @@ function initDocsPage() {
     } else if (first) {
       show(first.dataset.rel);
     }
+  });
+}
+
+/* ------------------------------------------------------------------ *
+ * index page: pick experiments to compare
+ * ------------------------------------------------------------------ */
+
+function initIndexPage() {
+  document.addEventListener("DOMContentLoaded", () => {
+    const KEY = "edagp.cmp.selected";
+    let selected = new Set();
+    try { selected = new Set(JSON.parse(sessionStorage.getItem(KEY) || "[]")); }
+    catch (e) { selected = new Set(); }
+
+    const boxes = [...document.querySelectorAll(".cmp-chk")];
+    const count = document.getElementById("cmp-count");
+    const go = document.getElementById("cmp-go");
+    const clear = document.getElementById("cmp-clear");
+
+    function sync() {
+      boxes.forEach((cb) => {
+        cb.checked = selected.has(cb.dataset.name);
+        cb.closest(".card").classList.toggle("selected", cb.checked);
+      });
+      count.textContent = "已选 " + selected.size + " 个实验";
+      go.disabled = selected.size === 0;
+      try { sessionStorage.setItem(KEY, JSON.stringify([...selected])); }
+      catch (e) { /* storage unavailable: selection is still kept in memory */ }
+    }
+    // the checkbox sits inside the card's <a>: swallow the navigation
+    boxes.forEach((cb) => {
+      cb.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const n = cb.dataset.name;
+        if (selected.has(n)) selected.delete(n); else selected.add(n);
+        sync();
+      });
+    });
+    go.addEventListener("click", () => {
+      if (!selected.size) return;
+      location.href = "/compare?exps=" + encodeURIComponent([...selected].join(","));
+    });
+    clear.addEventListener("click", () => { selected.clear(); sync(); });
+    sync();
+  });
+}
+
+/* ------------------------------------------------------------------ *
+ * compare page: table + overlaid curves across experiments
+ * ------------------------------------------------------------------ */
+
+const DESIGN_ORDER = ["adaptec1", "adaptec2", "adaptec3", "adaptec4",
+                      "bigblue1", "bigblue2", "bigblue3", "bigblue4"];
+
+function designSort(a, b) {
+  const ia = DESIGN_ORDER.indexOf(a), ib = DESIGN_ORDER.indexOf(b);
+  if (ia >= 0 && ib >= 0) return ia - ib;
+  if (ia >= 0) return -1;
+  if (ib >= 0) return 1;
+  return a.localeCompare(b);
+}
+
+function geomeanPct(deltas) {
+  if (!deltas.length) return null;
+  const s = deltas.reduce((acc, d) => acc + Math.log(1 + d / 100), 0);
+  return (Math.exp(s / deltas.length) - 1) * 100;
+}
+
+let cmpData = null;      // API payload
+let cmpColumns = [];     // [{key, exp, group, label, metrics: {design: {whpwl, iters}}}]
+let cmpSeries = [];      // flattened series with column index
+let cmpCharts = {};
+
+function initComparePage() {
+  document.addEventListener("DOMContentLoaded", () => {
+    const names = (window.CMP && window.CMP.names) || [];
+    if (!names.length) return;
+    fetch("/api/compare?exps=" + encodeURIComponent(names.join(",")))
+      .then((r) => r.json())
+      .then((data) => {
+        cmpData = data;
+        buildCompareColumns();
+        buildCompareTable();
+        buildCompareCurveControls();
+        redrawCompareCharts();
+      })
+      .catch(() => {
+        document.getElementById("cmp-table").innerHTML =
+          '<p class="empty-hint">比较接口调用失败。</p>';
+      });
+  });
+}
+
+function buildCompareColumns() {
+  cmpColumns = [];
+  cmpSeries = [];
+  // baseline first so it is the default reference
+  const b = cmpData.baseline;
+  if (b && Object.keys(b.metrics || {}).length) {
+    cmpColumns.push({ key: "__baseline", exp: b.name, group: "",
+      label: b.name + "（基线）", metrics: b.metrics, ref: true });
+    (b.series || []).forEach((s) => cmpSeries.push({ ...s, col: 0 }));
+  }
+  cmpData.experiments.forEach((e) => {
+    const groups = {};
+    e.metrics.forEach((m) => {
+      (groups[m.group] = groups[m.group] || {})[m.design] = m;
+    });
+    const gnames = Object.keys(groups).sort();
+    if (!gnames.length) {
+      // experiment with logs but no parseable final metrics: still show its curves
+      const idx = cmpColumns.push({ key: e.name, exp: e.name, group: "",
+        label: e.name, metrics: {} }) - 1;
+      e.series.forEach((s) => cmpSeries.push({ ...s, col: idx }));
+      return;
+    }
+    gnames.forEach((g) => {
+      const idx = cmpColumns.push({ key: e.name + "/" + g, exp: e.name, group: g,
+        label: e.name + (g ? " / " + g : ""), metrics: groups[g] }) - 1;
+      e.series.forEach((s) => {
+        const parts = s.label.split("/");
+        const sg = parts.length > 1 ? parts.slice(0, -1).join("/") : "";
+        if (sg === g) cmpSeries.push({ ...s, col: idx });
+      });
+    });
+  });
+}
+
+function buildCompareTable() {
+  const sel = document.getElementById("ref-select");
+  sel.innerHTML = cmpColumns.map((c, i) =>
+    '<option value="' + i + '">' + escapeHtml(c.label) + "</option>").join("");
+  sel.addEventListener("change", renderCompareTable);
+  document.getElementById("show-iters").addEventListener("change", renderCompareTable);
+  renderCompareTable();
+}
+
+function renderCompareTable() {
+  const refIdx = +document.getElementById("ref-select").value || 0;
+  const showIters = document.getElementById("show-iters").checked;
+  const ref = cmpColumns[refIdx];
+  const designs = [...new Set(cmpColumns.flatMap((c) => Object.keys(c.metrics)))]
+    .sort(designSort);
+  let html = '<table class="data-table cmp-table"><thead><tr><th>design</th>';
+  cmpColumns.forEach((c, i) => {
+    html += '<th class="grp' + (i === refIdx ? " ref" : "") + '">' +
+      escapeHtml(c.label) + "</th>";
+  });
+  html += "</tr></thead><tbody>";
+  const deltas = cmpColumns.map(() => []);
+  designs.forEach((d) => {
+    html += "<tr><td>" + escapeHtml(d) + "</td>";
+    const r = ref.metrics[d];
+    cmpColumns.forEach((c, i) => {
+      const m = c.metrics[d];
+      if (!m) { html += '<td class="num">—</td>'; return; }
+      let cell = (m.whpwl / 1e6).toFixed(2);
+      let cls = "num";
+      if (r && i !== refIdx) {
+        const dlt = (m.whpwl / r.whpwl - 1) * 100;
+        deltas[i].push(dlt);
+        cell += " <small>(" + (dlt >= 0 ? "+" : "") + dlt.toFixed(2) + "%)</small>";
+        cls += dlt > 0.05 ? " pos" : dlt < -0.05 ? " neg" : "";
+      }
+      if (i === refIdx) cls += " ref";
+      if (showIters) cell += " <small>[" + m.iters + "]</small>";
+      html += '<td class="' + cls + '">' + cell + "</td>";
+    });
+    html += "</tr>";
+  });
+  html += '<tr class="geo"><td>geomean Δ</td>';
+  cmpColumns.forEach((c, i) => {
+    if (i === refIdx) { html += '<td class="num ref">0</td>'; return; }
+    const g = geomeanPct(deltas[i]);
+    html += '<td class="num' + (g == null ? "" : g > 0 ? " pos" : " neg") + '">' +
+      (g == null ? "—" : (g >= 0 ? "+" : "") + g.toFixed(2) + "% <small>(n=" +
+       deltas[i].length + ")</small>") + "</td>";
+  });
+  html += "</tr></tbody></table>";
+  document.getElementById("cmp-table").innerHTML = html;
+}
+
+function buildCompareCurveControls() {
+  const ctrl = document.getElementById("cmp-controls");
+  if (!cmpSeries.length) {
+    document.getElementById("cmp-curves").innerHTML =
+      '<p class="empty-hint">所选实验没有可解析的迭代日志。</p>';
+    return;
+  }
+  const designs = [...new Set(cmpSeries.map((s) => seriesDesign(s.label)))].sort(designSort);
+  let html = '<div class="ctrl-row"><span class="ctrl-label">设计：</span>'
+    + '<select id="cmp-design">';
+  designs.forEach((d, i) => {
+    html += '<option value="' + escapeHtml(d) + '"' + (i === 0 ? " selected" : "") + ">" +
+      escapeHtml(d) + "</option>";
+  });
+  html += "</select>"
+    + ' <label class="ctrl-label"><input type="checkbox" id="cmp-log" checked> wHPWL 对数刻度</label>'
+    + "</div>";
+  html += '<div class="ctrl-group"><span class="ctrl-group-name">实验/变体：</span>';
+  cmpColumns.forEach((c, i) => {
+    html += '<label class="series-chk' + (c.ref ? " ref" : "") + '" style="--c:' +
+      seriesColor(i, cmpColumns.length) + '"><input type="checkbox" data-col="' + i +
+      '" checked> ' + escapeHtml(c.label) + "</label>";
+  });
+  html += "</div>";
+  ctrl.innerHTML = html;
+  ctrl.addEventListener("change", redrawCompareCharts);
+}
+
+function redrawCompareCharts() {
+  const design = document.getElementById("cmp-design").value;
+  const useLog = document.getElementById("cmp-log").checked;
+  const cols = new Set([...document.querySelectorAll("#cmp-controls input[data-col]")]
+    .filter((cb) => cb.checked).map((cb) => +cb.dataset.col));
+  const picked = cmpSeries.filter((s) => cols.has(s.col) && seriesDesign(s.label) === design);
+  const cfgs = [
+    { id: "cmp-chart-whpwl", field: "whpwl", title: "wHPWL · " + design,
+      yType: useLog ? "logarithmic" : "linear" },
+    { id: "cmp-chart-overflow", field: "overflow", title: "Overflow · " + design,
+      yType: "linear" },
+  ];
+  cfgs.forEach((c) => {
+    const canvas = document.getElementById(c.id);
+    if (!canvas) return;
+    if (cmpCharts[c.id]) cmpCharts[c.id].destroy();
+    const opts = JSON.parse(JSON.stringify(CHART_COMMON));
+    opts.plugins.title = { display: true, text: c.title };
+    opts.plugins.legend = { display: true, position: "bottom",
+      labels: { boxWidth: 14, font: { size: 10 } } };
+    opts.plugins.tooltip = CHART_COMMON.plugins.tooltip;
+    opts.scales.y = { type: c.yType };
+    cmpCharts[c.id] = new Chart(canvas, {
+      type: "line",
+      data: { datasets: picked.map((s) => ({
+        label: cmpColumns[s.col].label,
+        data: s.iter.map((x, k) => ({ x, y: s[c.field][k] })),
+        borderColor: seriesColor(s.col, cmpColumns.length),
+        borderDash: s.ref ? [6, 4] : [],
+        backgroundColor: "transparent",
+      })) },
+      options: opts,
+    });
   });
 }

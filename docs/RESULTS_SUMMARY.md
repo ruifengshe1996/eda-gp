@@ -244,6 +244,8 @@ N3 中途长程重排、N6 信赖域仍然有效但排后。N5 的原动机（�
 
 - 修复版主数据：`experiments/conn_rebuild/`（logs / metrics / 32 张 montage）
 - **overflow 专题：`docs/OVERFLOW_ANALYSIS.md` + `scripts/overflow_anatomy.py`**
+- **目标函数各项的设计与运行期演化：`docs/OBJECTIVE_TERMS.md`**
+- **webUI 比较功能：总览页勾选卡片 → `/compare`（对照表 + 多实验曲线同框，含 center 基线虚线）**
 - **λ 入口对照：`experiments/lambda_entry/`（8 运行 + analyze.py）**
 - **去混杂前沿与残差：`experiments/lambda_ramp/`（24 运行 + `analyze.py` + `viz/frontier.png`）**
 - 修复版路由表：`experiments/combiner/routing_table.md`

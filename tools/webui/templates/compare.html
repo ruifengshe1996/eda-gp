@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}实验比较 · EDA-GP{% endblock %}
+{% block content %}
+<h1 class="page-title">实验比较</h1>
+
+<section class="cmp-picker">
+  <form method="get" action="{{ url_for('compare') }}" id="cmp-form">
+    <span class="ctrl-label">选择要比较的实验：</span>
+    {% for e in all_experiments %}
+    <label class="cmp-pick">
+      <input type="checkbox" name="exp" value="{{ e.name }}"
+             {% if e.name in names %}checked{% endif %}> {{ e.name }}
+    </label>
+    {% endfor %}
+    <button class="btn" type="submit">比较</button>
+  </form>
+</section>
+
+{% if not names %}
+<p class="empty-hint">尚未选择实验。勾选上方的实验后点击“比较”，或在总览页勾选卡片。</p>
+{% else %}
+
+<h2>对照表（每设计最终 wHPWL 与全局布局迭代数）</h2>
+<div class="ctrl-row">
+  <span class="ctrl-label">参考列（Δ 的基准）：</span>
+  <select id="ref-select"></select>
+  <label class="ctrl-label"><input type="checkbox" id="show-iters" checked> 显示迭代数</label>
+</div>
+<div class="table-scroll" id="cmp-table"><p class="loading">正在解析日志…</p></div>
+<p class="note">wHPWL 单位 ×1e6；Δ 为相对参考列的百分比；括号内为 GP 迭代数。
+几何平均行按 (1+Δ) 的几何平均减 1 计算，只统计参考列与本列都齐全的设计。</p>
+
+<h2>收敛曲线（所有备选实验重画在同一画框）</h2>
+<div class="curves-block" id="cmp-curves">
+  <div class="curves-controls" id="cmp-controls"><p class="loading">正在解析日志…</p></div>
+  <div class="chart-wrap"><canvas id="cmp-chart-whpwl"></canvas></div>
+  <div class="chart-wrap"><canvas id="cmp-chart-overflow"></canvas></div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+window.CMP = { names: {{ names|tojson }} };
+initComparePage();
+</script>
+{% endblock %}

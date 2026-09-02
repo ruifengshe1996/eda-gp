@@ -393,6 +393,104 @@ def parse_log_curve(path):
     return data
 
 
+FINAL_RE = re.compile(r"iteration\s+(\d+),\s*wHPWL\s+([0-9.Ee+-]+),\s*time")
+
+_final_cache = {}  # abspath -> ((mtime, size), (whpwl, iters) | None)
+
+
+def parse_log_final(path):
+    """Final (post-DP) wHPWL and GP iteration count of one run, or None."""
+    try:
+        st = os.stat(path)
+    except OSError:
+        return None
+    key = (st.st_mtime, st.st_size)
+    cached = _final_cache.get(path)
+    if cached and cached[0] == key:
+        return cached[1]
+    res = None
+    txt = read_text(path)
+    if txt:
+        hits = FINAL_RE.findall(txt)
+        if hits:
+            try:
+                res = (float(hits[-1][1]), int(hits[-1][0]))
+            except ValueError:
+                res = None
+    _final_cache[path] = (key, res)
+    return res
+
+
+def split_label(label):
+    """'obsfield/adaptec1' -> ('obsfield', 'adaptec1'); 'adaptec1' ->
+    ('', 'adaptec1'); 'adaptec1_run' -> ('', 'adaptec1')."""
+    parts = label.split("/")
+    design = parts[-1]
+    if design.endswith("_run"):
+        design = design[:-4]
+    return ("/".join(parts[:-1]), design)
+
+
+def collect_metrics(name):
+    """[{label, group, design, whpwl, iters}] for every parseable run log."""
+    d = os.path.join(EXP_DIR, name, "logs")
+    out = []
+    if not os.path.isdir(d):
+        return out
+    for dirpath, dirnames, filenames in os.walk(d):
+        dirnames.sort()
+        for f in sorted(filenames):
+            if not f.endswith(".log"):
+                continue
+            res = parse_log_final(os.path.join(dirpath, f))
+            if res is None:
+                continue
+            label = os.path.relpath(os.path.join(dirpath, f), d)[:-4]
+            label = label.replace(os.sep, "/")
+            group, design = split_label(label)
+            out.append({"label": label, "group": group, "design": design,
+                        "whpwl": res[0], "iters": res[1]})
+    return out
+
+
+# The same-machine center baseline every experiment is measured against.
+BASELINE_EXP = "obstacle_field"
+BASELINE_GROUP = "center"
+
+
+def baseline_series():
+    """Reference curves (center init) as series flagged ref=True."""
+    d = os.path.join(EXP_DIR, BASELINE_EXP, "logs", BASELINE_GROUP)
+    series = []
+    if not os.path.isdir(d):
+        return series
+    for f in sorted(os.listdir(d)):
+        if not f.endswith(".log"):
+            continue
+        data = parse_log_curve(os.path.join(d, f))
+        if not data:
+            continue
+        label = BASELINE_GROUP + "/" + f[:-4]
+        series.append({"label": label, "ref": True, **data})
+    return series
+
+
+def baseline_metrics():
+    d = os.path.join(EXP_DIR, BASELINE_EXP, "logs", BASELINE_GROUP)
+    out = {}
+    if not os.path.isdir(d):
+        return out
+    for f in sorted(os.listdir(d)):
+        if not f.endswith(".log"):
+            continue
+        res = parse_log_final(os.path.join(d, f))
+        if res is None:
+            continue
+        _, design = split_label(f[:-4])
+        out[design] = {"whpwl": res[0], "iters": res[1]}
+    return out
+
+
 def collect_curves(name):
     d = os.path.join(EXP_DIR, name, "logs")
     series = []
@@ -533,7 +631,42 @@ def image(rel):
 @app.route("/api/exp/<name>/curves")
 def api_curves(name):
     exp_dir_or_404(name)
-    return jsonify({"series": collect_curves(name)})
+    series = collect_curves(name)
+    # ?ref=1 overlays the same-machine center baseline (dashed in the UI)
+    if request.args.get("ref") == "1" and name != BASELINE_EXP:
+        series = series + baseline_series()
+    return jsonify({"series": series})
+
+
+def parse_exp_list(raw):
+    names = []
+    for n in (raw or "").split(","):
+        n = n.strip()
+        if n and re.match(r"^[\w.-]+$", n) and os.path.isdir(
+                os.path.join(EXP_DIR, n)) and n not in names:
+            names.append(n)
+    return names
+
+
+@app.route("/compare")
+def compare():
+    raw = request.args.get("exps", "")
+    if request.args.getlist("exp"):
+        raw = ",".join(request.args.getlist("exp"))
+    names = parse_exp_list(raw)
+    return render_template("compare.html", names=names,
+                           all_experiments=list_experiments())
+
+
+@app.route("/api/compare")
+def api_compare():
+    names = parse_exp_list(request.args.get("exps", ""))
+    exps = [{"name": n, "series": collect_curves(n),
+             "metrics": collect_metrics(n)} for n in names]
+    return jsonify({"experiments": exps,
+                    "baseline": {"name": BASELINE_EXP + "/" + BASELINE_GROUP,
+                                 "series": baseline_series(),
+                                 "metrics": baseline_metrics()}})
 
 
 @app.route("/api/exp/<name>/commits")
